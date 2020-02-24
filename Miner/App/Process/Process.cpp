@@ -33,6 +33,7 @@ void start_monitor(void);
 void start_monitor2(void);
 void start_worker(void);
 ipc_status_t attest_session();
+void wait_chain_run();
 
 /**
  * @description: Signal process function to deal with signals transfered
