@@ -23,6 +23,8 @@ const char *show_tag = "<monitor>";
 Config *p_config = NULL;
 // Pointer to http handler instance
 ApiHandler *p_api_handler = NULL;
+// Store tee identity
+std::string entry_res = "";
 
 extern FILE *felog;
 extern bool run_as_server;
@@ -32,8 +34,9 @@ extern msg_form msg;
 void start_monitor(void);
 void start_monitor2(void);
 void start_worker(void);
+bool wait_chain_run(void);
 ipc_status_t attest_session();
-void wait_chain_run();
+bool do_plot_disk(void);
 
 /**
  * @description: Signal process function to deal with signals transfered
@@ -194,20 +197,6 @@ bool initialize_components(void)
         cfprintf(felog, CF_ERROR "%s ipfs daemon is not started up! Please start it up!\n", show_tag);
         return false;
     }
-    //cfprintf(felog, CF_INFO "%s Init ipfs successfully.\n", show_tag);
-
-    /* Crust-tee component */
-    if (new_crust(p_config->crust_api_base_url, p_config->crust_password, p_config->crust_backup) == NULL)
-    {
-        cfprintf(felog, CF_ERROR "%s Init crust-tee failed.\n", show_tag);
-        return false;
-    }
-
-    if (!get_crust()->is_online())
-    {
-        cfprintf(felog, CF_ERROR "%s crust api or crust chain is not started up! Please start it up!\n", show_tag);
-        return false;
-    }
 
     pthread_t wthread;
     if (pthread_create(&wthread, NULL, start_http, NULL) != 0)
@@ -225,7 +214,7 @@ bool initialize_components(void)
  *   to verify identity
  * @return: success or failure
  * */
-bool entry_network(void)
+bool entry_network(std::string &entry_res)
 {
     sgx_quote_sign_type_t linkable = SGX_UNLINKABLE_SIGNATURE;
     sgx_status_t status, sgxrv;
@@ -244,7 +233,6 @@ bool entry_network(void)
     from_hexstring((unsigned char *)spid, p_config->spid.c_str(), p_config->spid.size());
     int i = 0;
     bool entry_status = true;
-    std::string entryRes;
 
     /* get nonce */
     for (i = 0; i < 2; ++i)
@@ -406,17 +394,7 @@ bool entry_network(void)
         goto cleanup;
     }
 
-    entryRes = res->body;
-    cfprintf(felog, CF_INFO "%s Entry network application successfully!Info:%s\n", show_tag, entryRes.c_str());
-
-    wait_chain_run();
-    if (!get_crust()->post_tee_identity(entryRes))
-    {
-        cfprintf(felog, CF_ERROR "Send identity to crust chain failed!\n");
-        entry_status = false;
-        goto cleanup;
-    }
-    cfprintf(felog, CF_INFO "Send identity to crust chain successfully!\n");
+    entry_res = res->body;
 
 cleanup:
 
@@ -427,22 +405,44 @@ cleanup:
 
 /**
  * @description: waitting for the crust chain to run
+ * @return: success or not
  * */
-void wait_chain_run()
+bool wait_chain_run(void)
 {
+    if (new_crust(p_config->crust_api_base_url, p_config->crust_password, p_config->crust_backup) == NULL)
+    {
+        cfprintf(felog, CF_ERROR "%s Init crust chain failed.\n", show_tag);
+        return false;
+    }
+
+    while (true)
+    {
+        if (get_crust()->is_online())
+        {
+            break;
+        }
+        else
+        {
+            cfprintf(NULL, CF_INFO "%s Waitting for chain to run...\n", show_tag);
+            sleep(3);
+        }
+    }
+
     while (true)
     {
         BlockHeader *block_header = get_crust()->get_block_header();
         if (block_header->number > 0)
         {
-           break;
+            break;
         }
         else
         {
-            cfprintf(NULL, CF_INFO "Waitting for chain to run...\n");
+            cfprintf(NULL, CF_INFO "%s Waitting for chain to run...\n", show_tag);
             sleep(3);
         }
     }
+
+    return true;
 }
 
 /**
@@ -492,7 +492,7 @@ void *do_check_block(void *)
         BlockHeader *block_header = get_crust()->get_block_header();
         if (block_header->number % BLOCK_HEIGHT == 0)
         {
-            sleep(10);
+            sleep(20);
             size_t report_len = 0;
             sgx_ec256_signature_t ecc_signature;
             validate_status_t validate_status = VALIDATION_SUCCESS;
@@ -549,21 +549,32 @@ void *do_check_block(void *)
 }
 
 /**
- * @description: Do ploting disk related
+ * @description: Do disk related
  * */
 void *do_disk_related(void *)
 {
-
     pthread_t wthread;
 
-/* Use omp parallel to plot empty disk, the number of threads is equal to the number of CPU cores */
-#pragma omp parallel for
-    for (size_t i = 0; i < p_config->empty_capacity; i++)
+    /* Plot empty disk */
+    if (!do_plot_disk())
     {
-        ecall_plot_disk(global_eid, p_config->empty_path.c_str());
+        cfprintf(felog, CF_ERROR "%s Plot empty disk failed!\n", show_tag);
+        return NULL; 
     }
+    cfprintf(felog, CF_INFO "%s Plot empty successfully!\n", show_tag);
 
-    ecall_generate_empty_root(global_eid);
+    /* Send identity to crust chain */
+    if (!wait_chain_run())
+    {
+        return NULL;
+    }
+    
+    if (!get_crust()->post_tee_identity(entry_res))
+    {
+        cfprintf(felog, CF_ERROR "%s Send identity to crust chain failed!\n", show_tag);
+        return NULL;
+    }
+    cfprintf(felog, CF_INFO "%s Send identity to crust chain successfully!\n", show_tag);
 
     if (pthread_create(&wthread, NULL, do_check_block, NULL) != 0)
     {
@@ -574,6 +585,32 @@ void *do_disk_related(void *)
     ecall_main_loop(global_eid, p_config->empty_path.c_str());
 
     return NULL;
+}
+
+/**
+ * @description: plot disk
+ * @return: successed or failed
+ */
+bool do_plot_disk(void)
+{
+    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+
+    // Use omp parallel to plot empty disk, the number of threads is equal to the number of CPU cores
+    #pragma omp parallel for
+    for (size_t i = 0; i < p_config->empty_capacity; i++)
+    {
+        ecall_plot_disk(global_eid, p_config->empty_path.c_str());
+    }
+
+    // Generate empty root
+    ret = ecall_generate_empty_root(global_eid);
+    if (ret != SGX_SUCCESS)
+    {
+        cfprintf(felog, CF_ERROR "%s Generate empty root failed. Error code:%08x\n", show_tag, ret);
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -943,7 +980,7 @@ void start_worker(void)
     if (!is_entried_network && !run_as_server)
     {
         cfprintf(felog, CF_INFO "Entrying network...\n");
-        if(!entry_network())
+        if (!entry_network(entry_res))
         {
             ipc_status = ENTRY_NETWORK_ERROR;
             goto cleanup;
@@ -956,8 +993,9 @@ void start_worker(void)
         is_entried_network = true;
     }
 
-    /* Do disk related */
-    cfprintf(felog, CF_INFO "Ploting disk...\n");
+    cfprintf(felog, CF_INFO "%s Entry network application successfully!Info:%s\n", show_tag, entry_res.c_str());
+    
+    /* Do Validate disk */
     if (pthread_create(&wthread, NULL, do_disk_related, NULL) != 0)
     {
         cfprintf(felog, CF_ERROR "%s Create worker thread failed!\n", show_tag);
