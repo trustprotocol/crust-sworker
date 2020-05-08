@@ -195,8 +195,10 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
         // ----- Seal file ----- //
         std::string content;
         std::string org_root_hash_str(root->hash, HASH_LENGTH * 2);
+        char *p_new_path = (char*)malloc(dir_path.size());
+        memset(p_new_path, 0, dir_path.size());
         sgx_status = ecall_seal_file(global_eid, &crust_status, &root, 
-                dir_path.c_str(), dir_path.size());
+                dir_path.c_str(), p_new_path, dir_path.size());
     
         if (SGX_SUCCESS != sgx_status || CRUST_SUCCESS != crust_status)
         {
@@ -230,6 +232,7 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
         remove_char(tree_str, '\n');
         remove_char(tree_str, '\\');
         res["body"] = tree_str;
+        res["path"] = std::string(p_new_path, dir_path.size());
         sealed_tree_map.erase(org_root_hash_str);
 
         goto cleanup;

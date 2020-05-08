@@ -185,21 +185,25 @@ This API is a websocket API.
     "body" : {
         "hash":"0d22d8bbeaca1abebeec956e7e79a5f81c4b30c40a6034b190ff406c68c94c17",
         "links_num":2,
+        "size": 4,
         "links":
         [
           {
             "hash":"ca8fcf43b852d7d73801c1c13f38e3d8f80e6c53d4556aa4e18aaa6632c0914b",
             "links_num":2,
+            "size": 2,
             "links":
             [
               {
                 "hash":"df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
                 "links_num":0,
+                "size": 1,
                 "links":[]
               },
               {
                 "hash":"82ef6f9e48bcbdf232db1d5c5c6e8f390156f5305b35d4b32f75fc92c8126a32",
                 "links_num":0,
+                "size": 1,
                 "links":[]
               }
             ]
@@ -207,16 +211,19 @@ This API is a websocket API.
           {
             "hash":"e2f3daf19abfb40766b4c507a9b191fe274f343dfff18287c8e1d8552b8aac77",
             "links_num":2,
+            "size": 2,
             "links":
             [
               {
                 "hash":"4eaa79a233e1a350bb8d1eba62966f0cf78fe5ae91744420f366d4f19ae268b7",
                 "links_num":0,
+                "size": 1,
                 "links":[]
               },
               {
                 "hash":"4eaa79a233e1a350bb8d1eba62966f0cf78fe5ae91744420f366d4f19ae268b7",
                 "links_num":0,
+                "size": 1,
                 "links":[]
               }
             ]
@@ -236,6 +243,7 @@ Output status:
 ```
 {
     "body" : <sealed_merkletree_json>,
+    "path" : <path_to_sealed_dir>,
     "status" : 200
 }
 ```

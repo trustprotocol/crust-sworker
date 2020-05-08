@@ -30,6 +30,7 @@ namespace net = boost::asio;                    // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;               // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
 
+crust::Log *p_log = crust::Log::get_instance();
 
 // Return a reasonable mime type based on the extension of a file.
 beast::string_view mime_type(beast::string_view path)
@@ -91,7 +92,8 @@ void fail(beast::error_code ec, char const* what)
     if(ec == net::ssl::error::stream_truncated)
         return;
 
-    std::cerr << what << ": " << ec.message() << "\n";
+    //std::cerr << what << ": " << ec.message() << "\n";
+    p_log->err("Webserver error: %s : %s", what, ec.message());
 }
 
 //------------------------------------------------------------------------------

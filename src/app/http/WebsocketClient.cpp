@@ -10,6 +10,13 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 crust::Log *p_log = crust::Log::get_instance();
 
+/**
+ * @description: Initialize websocket
+ * @param host -> Host name or ip address
+ * @param port -> Server port
+ * @param route -> Request route path
+ * @return: Initialize status
+ * */
 bool WebsocketClient::websocket_init(std::string host, std::string port, std::string route)
 {
     try
@@ -59,6 +66,12 @@ bool WebsocketClient::websocket_init(std::string host, std::string port, std::st
     return true;
 }
 
+/**
+ * @description: Send request content to server
+ * @param content -> Request content
+ * @param res -> Response from server
+ * @return: Request status
+ * */
 bool WebsocketClient::websocket_request(std::string content, std::string &res)
 {
     if (this->_ws == NULL)
@@ -89,6 +102,9 @@ bool WebsocketClient::websocket_request(std::string content, std::string &res)
     return true;
 }
 
+/**
+ * @description: Close websocket
+ * */
 void WebsocketClient::websocket_close()
 {
     // Close the WebSocket connection

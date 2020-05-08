@@ -225,9 +225,9 @@ crust_status_t ecall_validate_merkle_tree(MerkleTree **root)
  * @param tree -> New MerkleTree
  * @return: Seal status
  * */
-crust_status_t ecall_seal_file(MerkleTree **root, const char *path, size_t path_len)
+crust_status_t ecall_seal_file(MerkleTree **root, const char *path, char *p_new_path , size_t path_len)
 {
-    return storage_seal_file(*root, path, path_len);
+    return storage_seal_file(*root, path, path_len, p_new_path);
 }
 
 /**

@@ -86,7 +86,7 @@ crust_status_t storage_validate_merkle_tree(MerkleTree *root)
  * @param tree -> New MerkleTree
  * @return: Seal status
  * */
-crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path_len)
+crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path_len, char *p_new_path)
 {
     std::string org_root_hash_str(root->hash, HASH_LENGTH * 2);
     std::string old_path(path, path_len);
@@ -136,6 +136,7 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     // Rename old directory
     std::string new_path = old_path.substr(0, old_path.find(org_root_hash_str)) + new_root_hash_str;
     ocall_rename_dir(&crust_status, old_path.c_str(), new_path.c_str());
+    memcpy(p_new_path, new_path.c_str(), new_path.size());
 
     return crust_status;
 }
