@@ -274,14 +274,3 @@ crust_status_t ecall_unseal_data(const uint8_t *p_sealed_data, size_t sealed_dat
 {
     return storage_unseal_data(p_sealed_data, sealed_data_size, p_unsealed_data, unsealed_data_size);
 }
-
-/**
- * @description: Generate validate Merkle hash tree after seal file successfully
- * @param root_hash -> root hash of Merkle tree
- * @param root_hash_len -> root hash length
- * @return: Generate status
- * */
-crust_status_t ecall_gen_new_merkle_tree(const uint8_t *root_hash, uint32_t root_hash_len)
-{
-    return storage_gen_new_merkle_tree(root_hash, root_hash_len);
-}

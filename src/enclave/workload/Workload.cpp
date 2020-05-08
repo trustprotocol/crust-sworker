@@ -255,3 +255,35 @@ crust_status_t Workload::restore_workload(std::string plot_data)
 
     return crust_status;
 }
+
+void Workload::reset_meaningful_data()
+{
+    crust_status_t crust_status = CRUST_SUCCESS;
+
+    // Clear previous meaningful data
+    this->meaningful_files_hash_s.clear();
+    uint8_t *p_data = NULL;
+    size_t data_len = 0;
+    crust_status = persist_get("meaningful_roots", &p_data, &data_len);
+    if (CRUST_SUCCESS != crust_status)
+    {
+        log_err("Workload: Get meaningful root hash failed!\n");
+        return;
+    }
+    std::string roots(reinterpret_cast<char*>(p_data), data_len);
+    free(p_data);
+
+    // Set new meaningful data
+    size_t spos = 0, epos;
+    do
+    {
+        epos = roots.find(";", spos);
+        if (epos == roots.npos)
+        {
+            epos = roots.size();
+        }
+        this->meaningful_files_hash_s.insert(roots.substr(spos, epos - spos));
+        spos = epos + 1;
+    } 
+    while (epos != roots.size());
+}

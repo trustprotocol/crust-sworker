@@ -55,8 +55,6 @@ public:
 
 private:
     static void *change_empty(void *);
-    void set_root_hash(uint8_t *root_hash, size_t hash_len);
-    void set_root_hash(std::string root_hash_str);
     std::shared_ptr<WebServer> server = NULL;
     std::vector<uint8_t> root_hash_v;
     long block_left_num;

@@ -25,7 +25,7 @@ Implement the trusted layer based on TEE technology, functionally connect  the c
 
 ## Development launch
 ### Install dependent libs
-Install gcc, git, openssl, boost, curl, elf
+Install gcc, git, openssl, boost, curl, elf, boost beast
 ```shell
 sudo apt install build-essential
 sudo apt install git
@@ -36,6 +36,7 @@ sudo apt install curl
 sudo apt install libelf-dev
 sudo apt install libleveldb-dev
 ```
+You should install boost beast manually
 
 ### Package resources
 Run '**scripts/package.sh**' to package whole project, you will get a **crust-\<version\>.tar** package.
@@ -140,8 +141,7 @@ curl --location --request POST 'http://<url:port>/api/v0/change/empty' \
 --header 'Content-Type: application/json' \
 --header 'backup: {\"address\":\"5FqazaU79hjpEMiWTWZx81VjsYFst15eBuSBKdQLgQibD7CX\",\"encoded\":\"0xc81537c9442bd1d3f4985531293d88f6d2a960969a88b1cf8413e7c9ec1d5f4955adf91d2d687d8493b70ef457532d505b9cee7a3d2b726a554242b75fb9bec7d4beab74da4bf65260e1d6f7a6b44af4505bf35aaae4cf95b1059ba0f03f1d63c5b7c3ccbacd6bd80577de71f35d0c4976b6e43fe0e1583530e773dfab3ab46c92ce3fa2168673ba52678407a3ef619b5e14155706d43bd329a5e72d36\",\"encoding\":{\"content\":[\"pkcs8\",\"sr25519\"],\"type\":\"xsalsa20-poly1305\",\"version\":\"2\"},\"meta\":{\"name\":\"Yang1\",\"tags\":[],\"whenCreated\":1580628430860}}' \
 --data-raw '{
-	"change": 2,
-	"backup": "{\"address\":\"5FqazaU79hjpEMiWTWZx81VjsYFst15eBuSBKdQLgQibD7CX\",\"encoded\":\"0xc81537c9442bd1d3f4985531293d88f6d2a960969a88b1cf8413e7c9ec1d5f4955adf91d2d687d8493b70ef457532d505b9cee7a3d2b726a554242b75fb9bec7d4beab74da4bf65260e1d6f7a6b44af4505bf35aaae4cf95b1059ba0f03f1d63c5b7c3ccbacd6bd80577de71f35d0c4976b6e43fe0e1583530e773dfab3ab46c92ce3fa2168673ba52678407a3ef619b5e14155706d43bd329a5e72d36\",\"encoding\":{\"content\":[\"pkcs8\",\"sr25519\"],\"type\":\"xsalsa20-poly1305\",\"version\":\"2\"},\"meta\":{\"name\":\"Yang1\",\"tags\":[],\"whenCreated\":1580628430860}}"
+	"change": 2
 }'
 ```
 
@@ -234,7 +234,7 @@ Parameter:
 Output status:
 1. 200: validate successfully, return sealed merkletree json structure
 1. 201: given merkletree has been validated
-1. 400: validate failed! Invalid merkletree
+1. 400: validate failed! Invalid request json 
 1. 401: validate failed! Invalid backup
 1. 402: validate failed! Empty body
 1. 403: validate failed! Deserialize merkletree failed

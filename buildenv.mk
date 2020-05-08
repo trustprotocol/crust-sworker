@@ -63,13 +63,13 @@ endif
 App_C_Files := $(wildcard ${SRC_PATH}app/utils/*.c)
 
 App_Cpp_Files := ${SRC_PATH}app/App.cpp $(wildcard ${SRC_PATH}app/utils/*.cpp) $(wildcard ${SRC_PATH}app/config/*.cpp) \
-	$(wildcard ${SRC_PATH}app/log/*.cpp) $(wildcard ${SRC_PATH}app/data_base/*.cpp) $(wildcard ${SRC_PATH}app/http/*.cpp) \
+	$(wildcard ${SRC_PATH}app/log/*.cpp) $(wildcard ${SRC_PATH}app/database/*.cpp) $(wildcard ${SRC_PATH}app/http/*.cpp) \
 	$(wildcard ${SRC_PATH}app/ipfs/*.cpp) $(wildcard ${SRC_PATH}app/ocalls/*.cpp) $(wildcard ${SRC_PATH}app/process/*.cpp) \
 	$(wildcard ${SRC_PATH}app/chain/*.cpp) \
 	
 App_Include_Paths := -I${SRC_PATH}include -I${SRC_PATH}app -I${SRC_PATH}app/ipfs -I${SRC_PATH}app/utils -I${SRC_PATH}app/http \
 	-I${SRC_PATH}app/config -I${SRC_PATH}app/ocalls -I${SRC_PATH}app/process -I${SRC_PATH}app/chain -I${SRC_PATH}app/log \
-	-I${SRC_PATH}app/data_base -I$(SGX_SDK)/include
+	-I${SRC_PATH}app/database -I$(SGX_SDK)/include
 
 App_C_Flags := -fPIC -Wno-attributes -fopenmp $(App_Include_Paths) 
 
@@ -147,7 +147,8 @@ Enclave_Link_Flags := $(Enclave_Security_Link_Flags) \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0 -Wl,--gc-sections   \
-	-Wl,--version-script=enclave/Enclave.lds
+	-Wl,--version-script=enclave/Enclave.lds \
+	-Wl,--allow-multiple-definition
 
 Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
 

@@ -38,6 +38,9 @@ crust_status_t generate_work_report(size_t *report_len)
 
     *report_len = work_report.size() + 1;
 
+    // Reset meaningful data
+    Workload::get_instance()->reset_meaningful_data();
+
     return crust_status;
 }
 

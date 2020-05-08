@@ -10,6 +10,11 @@
 #include "Enclave_t.h"
 #include "Resource.h"
 
+namespace json
+{
+    class JSON;
+}
+
 // Data tag to enclave only data
 #define TEE_PRIVATE_TAG  "&+CRUSTTEEPRIVATE+&"
 
@@ -47,6 +52,7 @@ crust_status_t seal_data_mrenclave(const uint8_t *p_src, size_t src_len, sgx_sea
 
 crust_status_t validate_merkle_tree_c(MerkleTree *root);
 std::string serialize_merkletree_to_json_string(MerkleTree *root);
+MerkleTree *deserialize_json_to_merkletree(json::JSON tree_json);
 bool is_null_hash(unsigned char *hash);
 void *enc_malloc(size_t size);
 void *enc_realloc(void *p, size_t size);

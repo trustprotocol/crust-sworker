@@ -90,6 +90,8 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
     Config *p_config = Config::get_instance();
     json::JSON res;
     UrlEndPoint *url_end_point = get_url_end_point(p_config->api_base_url);
+    res["status"] = 400;
+    res["body"] = "Unknown request!";
 
     // Storage seal file block
     std::string cur_path = url_end_point->base + "/storage/seal";
@@ -110,8 +112,9 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
         }
         catch (std::exception e)
         {
-            p_log->err("Parse json failed!Error: %s\n", e.what());
-            res["body"] = "Validate MerkleTree failed!Error invalide MerkleTree json!";
+            error_info.append("Validate MerkleTree failed! Parse json failed! Error: ").append(e.what());
+            p_log->err("%s\n", error_info.c_str());
+            res["body"] = error_info;
             res["status"] = 400;
             goto cleanup;
         }
@@ -374,23 +377,4 @@ void *ApiHandler::change_empty(void *)
     change_empty_mutex.unlock();
 
     return NULL;
-}
-
-void ApiHandler::set_root_hash(uint8_t *root_hash, size_t hash_len)
-{
-    if (root_hash == NULL)
-        return;
-
-    this->root_hash_v = std::vector<uint8_t>(root_hash, root_hash + hash_len);
-}
-
-void ApiHandler::set_root_hash(std::string root_hash_str)
-{
-    uint8_t *root_hash_u = hex_string_to_bytes(root_hash_str.c_str(), root_hash_str.size());
-    if (root_hash_u == NULL)
-    {
-        return;
-    }
-
-    this->root_hash_v = std::vector<uint8_t>(root_hash_u, root_hash_u + root_hash_str.size() / 2);
 }

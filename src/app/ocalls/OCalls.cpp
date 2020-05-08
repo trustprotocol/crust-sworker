@@ -1,6 +1,7 @@
 #include "OCalls.h"
 #include "DataBase.h"
 #include "FileUtils.h"
+#include "Config.h"
 #include <exception>
 
 crust::Log *p_log = crust::Log::get_instance();
@@ -11,6 +12,8 @@ size_t ocall_file_data_len = 0;
 // Used to store storage related data
 uint8_t *_storage_buffer = NULL;
 size_t _storage_buffer_len = 0;
+// Used to validation websocket client
+WebsocketClient *wssclient = NULL;
 // Used to temporarily store sealed serialized MerkleTree
 std::map<std::string, std::string> sealed_tree_map;
 
@@ -473,4 +476,61 @@ void ocall_get_sub_folders_and_files(const char *path, char ***files, size_t *fi
 
     *files = const_cast<char**>(dirs_r.data());
     *files_num = dirs_r.size();
+}
+
+/**
+ * @description: Initialize websocket client
+ * @return: Initialize status
+ * */
+crust_status_t ocall_validate_init()
+{
+    if (wssclient != NULL)
+        delete wssclient;
+
+    wssclient = new WebsocketClient();
+    Config *p_config = Config::get_instance();
+    UrlEndPoint *urlendpoint = get_url_end_point(p_config->api_base_url);
+    if (! wssclient->websocket_init(urlendpoint->ip, std::to_string(urlendpoint->port), urlendpoint->base))
+    {
+        return CRUST_VALIDATE_INIT_WSS_FAILED;
+    }
+
+    return CRUST_SUCCESS;
+}
+
+/**
+ * @description: Get validation files
+ * @param root_hash -> File tree root hash
+ * @param leaf_hash -> File tree leaf hash
+ * @param p_sealed_data -> Pointer to sealed data
+ * @param sealed_data_size -> Sealed data size
+ * @return: Get validation files status
+ * */
+crust_status_t ocall_validate_get_file(const char *root_hash, const char *leaf_hash,
+        uint8_t **p_sealed_data, size_t *sealed_data_size)
+{
+    json::JSON req_json;
+    req_json["root_hash"] = std::string(root_hash);
+    req_json["leaf_hash"] = std::string(leaf_hash);
+    std::string res;
+    if (! wssclient->websocket_request(req_json.dump(), res))
+    {
+        return CRUST_VALIDATE_WSS_REQUEST_FAILED;
+    }
+    *p_sealed_data = (uint8_t *)malloc(res.size());
+    memset(*p_sealed_data, 0, res.size());
+    memcpy(*p_sealed_data, res.c_str(), res.size());
+    *sealed_data_size = res.size();
+
+    return CRUST_SUCCESS;
+}
+
+/**
+ * @description: Close websocket connection
+ * */
+void ocall_validate_close()
+{
+    wssclient->websocket_close();
+    delete wssclient;
+    wssclient = NULL;
 }
