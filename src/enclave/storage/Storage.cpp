@@ -100,6 +100,7 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     {
         return crust_status;
     }
+    new_tree.erase(new_tree.size() - 1, 1);
     std::string new_root_hash_str(root->hash, HASH_LENGTH * 2);
 
     // Store Meaningful root hash
@@ -269,7 +270,7 @@ cleanup:
  * @param files_num -> Files number in root directory
  * @return: Unseal status
  * */
-crust_status_t storage_unseal_file(char **files, size_t files_num, const char *p_dir)
+crust_status_t storage_unseal_file(char **files, size_t files_num, const char *p_dir, char *p_new_path)
 {
     sgx_status_t sgx_status = SGX_SUCCESS;
     crust_status_t crust_status = CRUST_SUCCESS;
@@ -375,6 +376,7 @@ crust_status_t storage_unseal_file(char **files, size_t files_num, const char *p
 
     // Rename directory
     ocall_rename_dir(&crust_status, dir.c_str(), new_dir.c_str());
+    memcpy(p_new_path, new_dir.c_str(), new_dir.size());
 
 
 cleanup:

@@ -233,6 +233,12 @@ Parameter:
 
 Output status:
 1. 200: validate successfully, return sealed merkletree json structure
+```
+{
+    "body" : <sealed_merkletree_json>,
+    "status" : 200
+}
+```
 1. 201: given merkletree has been validated
 1. 400: validate failed! Invalid request json 
 1. 401: validate failed! Invalid backup
@@ -257,6 +263,13 @@ Parameter:
 
 Output status:
 1. 200: unseal data successfully!
+```
+{
+    "body" : <seal_msg>,
+    "path" : <path_to_new_dir>,
+    "status" : 200
+}
+```
 1. 400: Unseal file failed!Error invalid request json!
 1. 401: Unseal file failed!Error invalid backup 
 1. 402: Unseal file failed!Error empty file directory

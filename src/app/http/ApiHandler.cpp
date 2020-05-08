@@ -292,8 +292,10 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
 
         // Unseal file
         crust_status_t crust_status = CRUST_SUCCESS;
+        char *p_new_path = (char*)malloc(dir_path.size());
+        memset(p_new_path, 0, dir_path.size());
         sgx_status_t sgx_status = ecall_unseal_file(global_eid, &crust_status,
-                const_cast<char**>(sub_files.data()), sub_files.size(), dir_path.c_str());
+                const_cast<char**>(sub_files.data()), sub_files.size(), dir_path.c_str(), p_new_path, dir_path.size());
 
         if (SGX_SUCCESS != sgx_status || CRUST_SUCCESS != crust_status)
         {
@@ -326,7 +328,10 @@ std::string ApiHandler::websocket_handler(std::string &path, std::string &data, 
         {
             p_log->info("Unseal data successfully!\n");
             res["body"] = "Unseal data successfully!";
+            res["path"] = std::string(p_new_path, dir_path.size());
         }
+
+        free(p_new_path);
 
         goto cleanup;
     }

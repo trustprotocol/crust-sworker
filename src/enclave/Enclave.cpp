@@ -238,9 +238,9 @@ crust_status_t ecall_seal_file(MerkleTree **root, const char *path, size_t path_
  * @param files_num -> Files number in root directory
  * @return: Unseal status
  * */
-crust_status_t ecall_unseal_file(char **files, size_t files_num, const char *p_dir)
+crust_status_t ecall_unseal_file(char **files, size_t files_num, const char *p_dir, char *p_new_path, uint32_t /*path_len*/)
 {
-    return storage_unseal_file(files, files_num, p_dir);
+    return storage_unseal_file(files, files_num, p_dir, p_new_path);
 }
 
 /**
