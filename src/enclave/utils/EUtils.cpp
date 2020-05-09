@@ -278,18 +278,18 @@ crust_status_t seal_data_mrenclave(const uint8_t *p_src, size_t src_len,
  * */
 crust_status_t validate_merkle_tree_c(MerkleTree *tree)
 {
-    if (tree->links_num == 0)
+    if (tree == NULL || tree->links_num == 0)
     {
         return CRUST_SUCCESS;
     }
 
     crust_status_t crust_status = CRUST_SUCCESS;
-    sgx_sha256_hash_t g_hashs_hash256;
+    sgx_sha256_hash_t parent_hash;
 
-    uint8_t *hash_u = NULL;
+    uint8_t *parent_hash_org = NULL;
 
-    uint8_t *g_hashs = (uint8_t*)malloc(tree->links_num * HASH_LENGTH);
-    memset(g_hashs, 0, tree->links_num * HASH_LENGTH);
+    uint8_t *children_hashs = (uint8_t*)enc_malloc(tree->links_num * HASH_LENGTH);
+    memset(children_hashs, 0, tree->links_num * HASH_LENGTH);
     for (uint32_t i = 0; i < tree->links_num; i++)
     {
         if(validate_merkle_tree_c(tree->links[i]) != CRUST_SUCCESS)
@@ -297,27 +297,21 @@ crust_status_t validate_merkle_tree_c(MerkleTree *tree)
             crust_status = CRUST_INVALID_MERKLETREE;
             goto cleanup;
         }
-        string hash_r = string(tree->links[i]->hash);
-        size_t n_pos = hash_r.find("_");
-        if (n_pos != hash_r.npos)
-        {
-            hash_r.erase(0, n_pos + 1);
-        }
-        uint8_t *tmp_hash = hex_string_to_bytes(hash_r.c_str(), HASH_LENGTH * 2);
+        uint8_t *tmp_hash = hex_string_to_bytes(tree->links[i]->hash, HASH_LENGTH * 2);
         if (tmp_hash == NULL)
         {
             crust_status = CRUST_INVALID_MERKLETREE;
             goto cleanup;
         }
-        memcpy(g_hashs + i * HASH_LENGTH, tmp_hash, HASH_LENGTH);
+        memcpy(children_hashs + i * HASH_LENGTH, tmp_hash, HASH_LENGTH);
         free(tmp_hash);
     }
 
     // Compute and compare hash value
-    sgx_sha256_msg(g_hashs, tree->links_num * HASH_LENGTH, &g_hashs_hash256);
+    sgx_sha256_msg(children_hashs, tree->links_num * HASH_LENGTH, &parent_hash);
 
-    hash_u = hex_string_to_bytes(tree->hash, HASH_LENGTH * 2);
-    if (memcmp(hash_u, g_hashs_hash256, HASH_LENGTH) != 0)
+    parent_hash_org = hex_string_to_bytes(tree->hash, HASH_LENGTH * 2);
+    if (memcmp(parent_hash_org, parent_hash, HASH_LENGTH) != 0)
     {
         crust_status = CRUST_INVALID_MERKLETREE;
         goto cleanup;
@@ -326,10 +320,10 @@ crust_status_t validate_merkle_tree_c(MerkleTree *tree)
 
 cleanup:
 
-    free(g_hashs);
+    free(children_hashs);
 
-    if (hash_u != NULL)
-        free(hash_u);
+    if (parent_hash_org != NULL)
+        free(parent_hash_org);
 
     return crust_status;
 }

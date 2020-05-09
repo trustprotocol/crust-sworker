@@ -92,8 +92,8 @@ void fail(beast::error_code ec, char const* what)
     if(ec == net::ssl::error::stream_truncated)
         return;
 
-    //std::cerr << what << ": " << ec.message() << "\n";
-    p_log->err("Webserver error: %s : %s", what, ec.message());
+    p_log->err("Webserver error: ");
+    std::cerr << what << ": " << ec.message() << "\n";
 }
 
 //------------------------------------------------------------------------------
@@ -114,6 +114,7 @@ class websocket_session
     beast::flat_buffer buffer_;
     ApiHandler *api_handler_;
     std::string path_;
+    bool close_connection_;
 
     // Start the asynchronous operation
     template<class Body, class Allocator>
@@ -180,8 +181,8 @@ class websocket_session
 
         // Deal the message
         std::string buf = beast::buffers_to_string(buffer_.data());
-        bool close_connection = false;
-        std::string res = api_handler_->websocket_handler(path_, buf, close_connection);
+        close_connection_ = false;
+        std::string res = api_handler_->websocket_handler(path_, buf, close_connection_);
 
         // ----- Async write data ----- //
         derived().ws().async_write(

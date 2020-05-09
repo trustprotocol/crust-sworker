@@ -2,6 +2,7 @@
 #include "Identity.h"
 #include "Workload.h"
 #include "Persistence.h"
+#include "EJson.h"
 
 using namespace std;
 
@@ -768,6 +769,7 @@ crust_status_t id_store_quote(const char *quote, size_t len, const uint8_t *p_da
  * */
 crust_status_t id_store_metadata()
 {
+    /*
     // Gen seal data
     std::string metadata = TEE_PRIVATE_TAG;
     metadata.append(Workload::get_instance()->serialize_workload());
@@ -777,9 +779,16 @@ crust_status_t id_store_metadata()
         .append(std::to_string(now_work_report_block_height));
     metadata.append(CRUST_SEPARATOR)
         .append(g_chain_account_id);
+    */
+    json::JSON meta_json;
+    meta_json["workload"] = Workload::get_instance()->serialize_workload();
+    meta_json["id_key_pair"] = std::string(hexstring(&id_key_pair, sizeof(id_key_pair)));
+    meta_json["block_height"] = now_work_report_block_height;
+    meta_json["chain_account_id"] = g_chain_account_id;
+    std::string meta_str = meta_json.dump();
 
     // Seal workload string
-    return persist_add("metadata", (const uint8_t *)metadata.c_str(), metadata.size());
+    return persist_set("metadata", (const uint8_t *)meta_str.c_str(), meta_str.size());
 }
 
 /**
@@ -788,6 +797,42 @@ crust_status_t id_store_metadata()
  * */
 crust_status_t id_restore_metadata()
 {
+    uint8_t *p_data = NULL;
+    size_t data_len = 0;
+
+    // Get metadata
+    crust_status_t crust_status = persist_get("metadata", &p_data, &data_len);
+    if (CRUST_SUCCESS != crust_status)
+    {
+        log_err("Restore metadata failed! Error code: %lx\n", crust_status);
+        return crust_status;
+    }
+    json::JSON meta_json = json::JSON::Load(std::string(reinterpret_cast<char*>(p_data), data_len));
+    free(p_data);
+
+    // Restore workload
+    std::string workload = meta_json["workload"].ToString();
+    crust_status = Workload::get_instance()->restore_workload(workload);
+    if (CRUST_SUCCESS != crust_status)
+    {
+        return CRUST_BAD_SEAL_DATA;
+    }
+    // Restore id key pair
+    std::string id_key_pair_str = meta_json["id_key_pair"].ToString();
+    uint8_t *p_id_key = hex_string_to_bytes(id_key_pair_str.c_str(), id_key_pair_str.size());
+    if (p_id_key == NULL)
+    {
+        return CRUST_BAD_SEAL_DATA;
+    }
+    memcpy(&id_key_pair, p_id_key, sizeof(id_key_pair));
+    free(p_id_key);
+    // Restore block height
+    now_work_report_block_height = meta_json["block_height"].ToInt();
+    // Restore chain account id
+    g_chain_account_id = meta_json["chain_account_id"].ToString();
+
+    return CRUST_SUCCESS;
+    /*
     //unsigned char *p_sealed_data = NULL;
     crust_status_t crust_status = CRUST_SUCCESS;
     size_t spos = 0, epos = 0;
@@ -795,7 +840,7 @@ crust_status_t id_restore_metadata()
     string id_key_pair_str;
     uint8_t *byte_buf = NULL;
 
-    /* Unseal data */
+    // ----- Unseal data ----- //
     uint8_t *p_data = NULL;
     size_t data_len = 0;
     crust_status = persist_get("metadata", &p_data, &data_len);
@@ -804,7 +849,7 @@ crust_status_t id_restore_metadata()
         return crust_status;
     }
 
-    /* Restore related data */
+    // ----- Restore related data ----- //
     string metadata = std::string((const char *)(p_data+strlen(TEE_PRIVATE_TAG)), data_len);
 
     // Get plot data
@@ -848,6 +893,7 @@ crust_status_t id_restore_metadata()
     g_chain_account_id = metadata.substr(spos, epos - spos);
 
     return CRUST_SUCCESS;
+    */
 }
 
 /**
