@@ -196,7 +196,7 @@ crust_status_t _storage_seal_file(MerkleTree *root, string path, string &tree, s
         // Get new hash
         sgx_sha256_msg(p_sealed_data, sealed_data_size, &new_hash);
         hex_new_hash = hexstring(new_hash, HASH_LENGTH);
-        new_path.append(path).append("/").append(to_string(block_num)).append("_").append(hex_new_hash, HASH_LENGTH * 2);
+        new_path.append(path).append("/").append(to_string(block_num)).append("_").append(hex_new_hash);
         // Replace old file with new file
         ocall_replace_file(&crust_status, old_path.c_str(), new_path.c_str(), p_sealed_data, sealed_data_size);
         if (CRUST_SUCCESS != crust_status)
@@ -225,8 +225,7 @@ crust_status_t _storage_seal_file(MerkleTree *root, string path, string &tree, s
 
     // ----- Deal with non-leaf node ----- //
     // Construct tree string
-    tree.append("{\"links_num\":").append(to_string(root->links_num)).append(",");
-    tree.append("\"links\": [");
+    tree.append("{\"links\": [");
 
     size_t sub_hashs_len = root->links_num * HASH_LENGTH;
     uint8_t *sub_hashs = (uint8_t*)malloc(sub_hashs_len);
@@ -240,17 +239,25 @@ crust_status_t _storage_seal_file(MerkleTree *root, string path, string &tree, s
         {
             goto cleanup;
         }
-        memcpy(sub_hashs + i * HASH_LENGTH, root->links[i]->hash, HASH_LENGTH);
+        uint8_t *p_new_hash = hex_string_to_bytes(root->links[i]->hash, HASH_LENGTH * 2);
+        if (p_new_hash == NULL)
+        {
+            crust_status = CRUST_MALLOC_FAILED;
+            goto cleanup;
+        }
+        memcpy(sub_hashs + i * HASH_LENGTH, p_new_hash, HASH_LENGTH);
+        free(p_new_hash);
     }
     // Get new hash
     sgx_sha256_hash_t new_hash;
     sgx_sha256_msg(sub_hashs, sub_hashs_len, &new_hash);
     hex_new_hash = hexstring(new_hash, HASH_LENGTH);
-    root->hash = reinterpret_cast<char*>(hex_new_hash);
+    root->hash = hex_new_hash;
 
     // Construct tree string
     tree.erase(tree.size() - 1, 1);
-    tree.append("],\"hash\":\"").append(root->hash, HASH_LENGTH * 2).append("\",");
+    tree.append("],\"links_num\":").append(to_string(root->links_num)).append(",");
+    tree.append("\"hash\":\"").append(root->hash, HASH_LENGTH * 2).append("\",");
     tree.append("\"size\":").append(to_string(cur_size)).append("},");
 
     node_size += cur_size;

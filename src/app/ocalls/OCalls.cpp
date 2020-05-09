@@ -495,6 +495,20 @@ crust_status_t ocall_validate_init()
         return CRUST_VALIDATE_INIT_WSS_FAILED;
     }
 
+    // Send backup to server
+    std::string res;
+    if (! wssclient->websocket_request(p_config->chain_backup, res))
+    {
+        p_log->err("Validate failed! Send backup to server failed!\n");
+        return CRUST_VALIDATE_WSS_REQUEST_FAILED;
+    }
+    json::JSON res_json = json::JSON::Load(res);
+    if (res_json["status"].ToInt() != 200)
+    {
+        p_log->err("Validate failed! Error: %s\n", res.c_str());
+        return CRUST_VALIDATE_WSS_REQUEST_FAILED;
+    }
+
     return CRUST_SUCCESS;
 }
 
@@ -510,8 +524,8 @@ crust_status_t ocall_validate_get_file(const char *root_hash, const char *leaf_h
         uint8_t **p_sealed_data, size_t *sealed_data_size)
 {
     json::JSON req_json;
-    req_json["root_hash"] = std::string(root_hash);
-    req_json["leaf_hash"] = std::string(leaf_hash);
+    req_json["file_hash"] = std::string(root_hash);
+    req_json["node_hash"] = std::string(leaf_hash);
     std::string res;
     if (! wssclient->websocket_request(req_json.dump(), res))
     {
