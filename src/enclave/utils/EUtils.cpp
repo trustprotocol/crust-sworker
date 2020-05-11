@@ -384,7 +384,7 @@ MerkleTree *deserialize_json_to_merkletree(json::JSON tree_json)
         root->links = (MerkleTree**)malloc(root->links_num * sizeof(MerkleTree*));
         for (uint32_t i = 0; i < root->links_num; i++)
         {
-            MerkleTree *child = deserialize_merkle_tree_from_json(children[i]);
+            MerkleTree *child = deserialize_json_to_merkletree(children[i]);
             if (child == NULL)
             {
                 free(root->hash);
