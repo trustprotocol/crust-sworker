@@ -367,86 +367,36 @@ string serialize_merkletree_to_json_string(MerkleTree *root)
  * */
 MerkleTree *deserialize_json_to_merkletree(json::JSON tree_json)
 {
+    if (tree_json.JSONType() != json::JSON::Class::Object)
+        return NULL;
+
     MerkleTree *root = new MerkleTree();
-    root->hash = const_cast<char*>(tree_json["hash"].ToString().c_str());
-    root->size = tree_json["size"].ToInt();
+    std::string hash = tree_json["hash"].ToString();
+    size_t hash_len = hash.size() + 1;
+    root->hash = (char*)malloc(hash_len);
+    memset(root->hash, 0, hash_len);
+    memcpy(root->hash, hash.c_str(), hash.size());
     root->links_num = tree_json["links_num"].ToInt();
-    
-    if (root->links_num > 0)
+    json::JSON children = tree_json["links"];
+
+    if (root->links_num != 0)
     {
-        for (size_t i = 0; i < root->links_num; i++)
+        root->links = (MerkleTree**)malloc(root->links_num * sizeof(MerkleTree*));
+        for (uint32_t i = 0; i < root->links_num; i++)
         {
-            root->links[i] = deserialize_json_to_merkletree(tree_json["links"]);
+            MerkleTree *child = deserialize_merkle_tree_from_json(children[i]);
+            if (child == NULL)
+            {
+                free(root->hash);
+                free(root->links);
+                return NULL;
+            }
+            root->links[i] = child;
         }
     }
 
     return root;
 }
-/*
-crust_status_t deserialize_json_string_to_merkletree(MerkleTree **root, string ser_tree, size_t &spos)
-{
-    if (spos >= ser_tree.size())
-    {
-        return CRUST_SUCCESS;
-    }
-
-    *root = new MerkleTree();
-    MerkleTree *p_root = *root;
-
-    // Get size
-    spos = ser_tree.find("size", spos);
-    if (spos == ser_tree.npos)
-    {
-        return CRUST_UNEXPECTED_ERROR;
-    }
-    spos += strlen("size") + 2;
-    size_t epos = ser_tree.find("links_num", spos);
-    if (epos == ser_tree.npos)
-    {
-        return CRUST_UNEXPECTED_ERROR;
-    }
-    epos -= 2;
-    size_t size = atoi(ser_tree.substr(spos, epos - spos).c_str());
-    p_root->size = size;
-
-    // Get links_num
-    spos = epos + 2 + strlen("links_num") + 2;
-    epos = ser_tree.find("hash", spos);
-    if (epos == ser_tree.npos)
-    {
-        return CRUST_UNEXPECTED_ERROR;
-    }
-    epos -= 2;
-    size_t links_num = atoi(ser_tree.substr(spos, epos - spos).c_str());
-    p_root->links_num = links_num;
-
-    // Get hash
-    spos = epos + 2 + strlen("hash") + 3;
-    epos = ser_tree.find("links", spos);
-    if (epos == ser_tree.npos)
-    {
-        return CRUST_UNEXPECTED_ERROR;
-    }
-    epos -= 3;
-    string hash = ser_tree.substr(spos, epos - spos);
-    p_root->hash = (char*)hex_string_to_bytes(hash.c_str(), hash.size());
-
-    // Deserialize merkle tree recursively
-    spos = epos + 3 + strlen("links") + 3;
-    if (p_root->links_num != 0)
-    {
-        p_root->links = (MerkleTree**)malloc(p_root->links_num * sizeof(MerkleTree*));
-        for (size_t i = 0; i < p_root->links_num; i++)
-        {
-            MerkleTree *child = NULL;
-            deserialize_json_string_to_merkletree(&child, ser_tree, spos);
-            p_root->links[i] = child;
-        }
-    }
-
-    return CRUST_SUCCESS;
-}
-*/
 
 /**
  * @description: determine if a hash is all 0

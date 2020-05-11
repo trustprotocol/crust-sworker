@@ -124,7 +124,7 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     meta_json["old_hash"] = org_root_hash_str;
     meta_json["size"] = node_size;
     std::string meta_str = meta_json.dump();
-    crust_status = persist_add((new_root_hash_str+"_meta").c_str(), (const uint8_t*)meta_str.c_str(), meta_str.size());
+    crust_status = persist_set((new_root_hash_str+"_meta").c_str(), (const uint8_t*)meta_str.c_str(), meta_str.size());
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
