@@ -56,6 +56,7 @@ MerkleTree *deserialize_json_to_merkletree(json::JSON tree_json);
 bool is_null_hash(unsigned char *hash);
 void *enc_malloc(size_t size);
 void *enc_realloc(void *p, size_t size);
+void remove_char(std::string &data, char c);
 
 #if defined(__cplusplus)
 }

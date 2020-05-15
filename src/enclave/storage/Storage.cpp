@@ -1,5 +1,6 @@
 #include "Storage.h"
 #include "Persistence.h"
+#include "Identity.h"
 #include "EJson.h"
 
 using namespace std;
@@ -103,28 +104,32 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     new_tree.erase(new_tree.size() - 1, 1);
     std::string new_root_hash_str(root->hash, HASH_LENGTH * 2);
 
-    // Store Meaningful root hash
-    crust_status = persist_add(MEANINGFUL_FILE_DB_TAG, (const uint8_t*)new_root_hash_str.c_str(), new_root_hash_str.size());
+    // Store Meaningful file entry to enclave metadata
+    json::JSON file_entry_json;
+    file_entry_json["hash"] = new_root_hash_str;
+    file_entry_json["size"] = node_size;
+    crust_status = id_metadata_set_or_append("meaningful_roots", file_entry_json, ID_APPEND);
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
     }
+    Workload::get_instance()->files_json.append(file_entry_json);
 
     // Store new tree structure
     std::string new_tree_meta_data;
     new_tree_meta_data.append(new_tree);
-    crust_status = persist_add(new_root_hash_str.c_str(), (const uint8_t*)new_tree_meta_data.c_str(), new_tree_meta_data.size());
+    crust_status = persist_set(new_root_hash_str.c_str(), (const uint8_t*)new_tree_meta_data.c_str(), new_tree_meta_data.size());
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
     }
 
-    // Store new root hash to old root hash mapping
-    json::JSON meta_json;
-    meta_json["old_hash"] = org_root_hash_str;
-    meta_json["size"] = node_size;
-    std::string meta_str = meta_json.dump();
-    crust_status = persist_set((new_root_hash_str+"_meta").c_str(), (const uint8_t*)meta_str.c_str(), meta_str.size());
+    // Store new tree meta data
+    json::JSON tree_meta_json;
+    tree_meta_json["old_hash"] = org_root_hash_str;
+    tree_meta_json["size"] = node_size;
+    std::string tree_meta_str = tree_meta_json.dump();
+    crust_status = persist_set((new_root_hash_str+"_meta").c_str(), (const uint8_t*)tree_meta_str.c_str(), tree_meta_str.size());
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
@@ -137,6 +142,10 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     std::string new_path = old_path.substr(0, old_path.find(org_root_hash_str)) + new_root_hash_str;
     ocall_rename_dir(&crust_status, old_path.c_str(), new_path.c_str());
     memcpy(p_new_path, new_path.c_str(), new_path.size());
+
+    json::JSON cur_data;
+    id_get_metadata(cur_data);
+    log_info("==== metadata:%s\n", cur_data.dump().c_str());
 
     return crust_status;
 }
@@ -208,9 +217,10 @@ crust_status_t _storage_seal_file(MerkleTree *root, string path, string &tree, s
         block_num++;
 
         // Construct tree string
-        tree.append("{\"hash\":\"").append(root->hash, HASH_LENGTH * 2).append("\",");
-        tree.append("\"size\":").append(to_string(sealed_data_size)).append(",");
-        tree.append("\"links_num\":").append(to_string(root->links_num)).append("},");
+        // note: Cannot change append sequence!
+        tree.append("{\"links_num\":").append(to_string(root->links_num)).append(",");
+        tree.append("\"hash\":\"").append(root->hash, HASH_LENGTH * 2).append("\",");
+        tree.append("\"size\":").append(to_string(sealed_data_size)).append("},");
 
     sealend:
 
@@ -394,170 +404,6 @@ cleanup:
 
     if (p_decrypted_data != NULL)
         free(p_decrypted_data);
-
-    return crust_status;
-}
-
-/**
- * @description: Seal file block and generate new tree
- * @param root_hash -> file root hash
- * @param root_hash_len -> file root hash lenght
- * @param p_src -> pointer to file block data
- * @param src_len -> file block data size
- * @param p_sealed_data -> sealed file block data
- * @param sealed_data_size -> sealed file block data size
- * @return: Seal and generate result
- * */
-crust_status_t storage_seal_data(const uint8_t *root_hash, uint32_t root_hash_len,
-        const uint8_t *p_src, size_t src_len, uint8_t *p_sealed_data, size_t sealed_data_size)
-{
-    // ----- Get merkle tree metadata ----- //
-    vector<uint8_t> root_hash_v(root_hash, root_hash + root_hash_len);
-
-    if (tree_meta_map.find(root_hash_v) == tree_meta_map.end())
-    {
-        return CRUST_NOTFOUND_MERKLETREE;
-    }
-    auto entry = tree_meta_map[root_hash_v];
-
-    // ----- Verify file block hash ----- //
-    sgx_sha256_hash_t cur_hash;
-    sgx_sha256_msg(p_src, src_len, &cur_hash);
-
-    string ser_tree = std::get<0>(entry);
-    size_t spos = std::get<1>(entry);
-    if (spos == std::string::npos)
-    {
-        return CRUST_DUPLICATED_SEAL;
-    }
-    spos += strlen(LEAF_SEPARATOR);
-    size_t file_size = std::get<2>(entry);
-    uint8_t *org_hash = hex_string_to_bytes(ser_tree.substr(spos, HASH_LENGTH * 2).c_str(), HASH_LENGTH * 2);
-    // Compare hash value
-    for (size_t i = 0; i < root_hash_len; i++)
-    {
-        if (org_hash[i] != cur_hash[i])
-        {
-            return CRUST_WRONG_FILE_BLOCK;
-        }
-    }
-    free(org_hash);
-    
-    // ----- Seal original file block ----- //
-    uint32_t pri_key_len = sizeof(id_key_pair.pri_key);
-    uint32_t src_r_len = sizeof(uint32_t) * 2 + src_len + pri_key_len;
-    uint8_t *p_src_r = (uint8_t*)malloc(src_r_len);
-    uint8_t *pp = p_src_r;
-    memset(p_src_r, 0, src_r_len);
-    // Get source data
-    memcpy(pp, &src_len, sizeof(uint32_t));
-    pp += sizeof(uint32_t);
-    memcpy(pp, &pri_key_len, sizeof(uint32_t));
-    pp += sizeof(uint32_t);
-    memcpy(pp, p_src, src_len);
-    pp += src_len;
-    memcpy(pp, &id_key_pair.pri_key, sizeof(id_key_pair.pri_key));
-
-    // Get sealed data
-    uint8_t *p_sealed_data_r = NULL;
-    crust_status_t crust_status = seal_data_mrenclave(p_src_r, src_r_len, 
-            (sgx_sealed_data_t**)&p_sealed_data_r, &sealed_data_size);
-
-    // Free tmp buffer
-    free(p_src_r);
-
-    if (CRUST_SUCCESS != crust_status || p_sealed_data_r == NULL)
-    {
-        return CRUST_SEAL_DATA_FAILED;
-    }
-    memcpy(p_sealed_data, p_sealed_data_r, sealed_data_size);
-
-    // ----- Set new metadata ----- //
-    sgx_sha256_hash_t cur_new_hash;
-    sgx_sha256_msg(p_sealed_data_r, sealed_data_size, &cur_new_hash);
-    const char *p_new_hash_hex = hexstring(&cur_new_hash, HASH_LENGTH);
-    // Set new node hash
-    for (int i = 0; i < HASH_LENGTH * 2; i++)
-    {
-        ser_tree[i + spos] = p_new_hash_hex[i];
-    }
-    // Set new start position
-    spos = ser_tree.find(LEAF_SEPARATOR, spos);
-    tree_meta_map[root_hash_v] = make_tuple(ser_tree, spos, file_size + sealed_data_size);
-
-
-    free(p_sealed_data_r);
-
-    return CRUST_SUCCESS;
-}
-
-/**
- * @description: Unseal and verify file block data
- * @param p_sealed_data -> sealed file block data
- * @param sealed_data_size -> sealed file block data size
- * @param p_unsealed_data -> unsealed file block data
- * @param unsealed_data_size -> unsealed file block data size
- * @return: Unseal status
- * */
-crust_status_t storage_unseal_data(const uint8_t *p_sealed_data, size_t sealed_data_size,
-        uint8_t *p_unsealed_data, uint32_t unsealed_data_size)
-{
-    crust_status_t crust_status = CRUST_SUCCESS;
-    sgx_status_t sgx_status = SGX_SUCCESS;
-    uint8_t *p_unsealed_pri_key = NULL;
-    uint32_t src_len = 0;
-    uint32_t pri_key_len = 0;
-
-    // ----- Unseal file block ----- //
-    // Create buffer in enclave
-    sgx_sealed_data_t *p_sealed_data_r = (sgx_sealed_data_t *)malloc(sealed_data_size);
-    memset(p_sealed_data_r, 0, sealed_data_size);
-    memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
-    // Create buffer for decrypted data
-    uint32_t decrypted_data_len = sgx_get_encrypt_txt_len(p_sealed_data_r);
-    uint8_t *p_decrypted_data = (uint8_t *)malloc(decrypted_data_len);
-    sgx_status = sgx_unseal_data(p_sealed_data_r, NULL, NULL,
-            p_decrypted_data, &decrypted_data_len);
-    if (SGX_SUCCESS != sgx_status)
-    {
-        log_err("Unseal data failed!Error code:%lx\n", sgx_status);
-        crust_status = CRUST_UNSEAL_DATA_FAILED;
-        goto cleanup;
-    }
-
-    // Check if data is private data
-    if (memcmp(p_decrypted_data, TEE_PRIVATE_TAG, strlen(TEE_PRIVATE_TAG)) == 0)
-    {
-        crust_status = CRUST_MALWARE_DATA_BLOCK;
-        goto cleanup;
-    }
-
-    // ----- Deserialize file block related data ----- //
-    memcpy(&src_len, p_decrypted_data, sizeof(uint32_t));
-    if (src_len != unsealed_data_size)
-    {
-        crust_status = CRUST_MALWARE_DATA_BLOCK;
-        goto cleanup;
-    }
-    p_decrypted_data += sizeof(uint32_t);
-    memcpy(&pri_key_len, p_decrypted_data, sizeof(uint32_t));
-    p_decrypted_data += sizeof(uint32_t);
-    // Verify unsealed data
-    memcpy(p_unsealed_data, p_decrypted_data, src_len);
-    p_decrypted_data += src_len;
-    // Compare if the private key belongs to current tee
-    p_unsealed_pri_key = (uint8_t *)malloc(pri_key_len);
-    memset(p_unsealed_pri_key, 0, pri_key_len);
-    memcpy(p_unsealed_pri_key, p_decrypted_data, pri_key_len);
-    if (memcmp(p_unsealed_pri_key, &id_key_pair.pri_key, pri_key_len) != 0)
-    {
-        crust_status = CRUST_MALWARE_DATA_BLOCK;
-        goto cleanup;
-    }
-
-cleanup:
-
-    free(p_decrypted_data);
 
     return crust_status;
 }

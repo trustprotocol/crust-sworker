@@ -451,3 +451,13 @@ void *enc_realloc(void *p, size_t size)
 
     return p;
 }
+
+/**
+ * @description: Remove indicated character from given string
+ * @param data -> Reference to given string
+ * @param c -> Indicated character
+ * */
+void remove_char(std::string &data, char c)
+{
+    data.erase(std::remove(data.begin(), data.end(), c), data.end());
+}

@@ -1,4 +1,6 @@
 #include "Validator.h"
+#include "Identity.h"
+#include "EJson.h"
 
 extern sgx_thread_mutex_t g_workload_mutex;
 
@@ -298,125 +300,152 @@ std::vector<std::string> get_hashs_from_block(unsigned char *block_data, size_t 
     return hashs;
 }
 
+/**
+ * @description: Validate Meaningful files
+ * */
 void validate_meaningful_file()
 {
     uint8_t *p_data = NULL;
     size_t data_len = 0;
     crust_status_t crust_status = CRUST_SUCCESS;
+    Workload *wl = Workload::get_instance();
 
     // Initialize validatioin
     ocall_validate_init(&crust_status);
     if (CRUST_SUCCESS != crust_status)
     {
+        wl->files_json = json::Array();
         ocall_validate_close();
         return;
     }
 
-    // Get meaningful file roots
-    crust_status = persist_get(MEANINGFUL_FILE_DB_TAG, &p_data, &data_len);
-    if (CRUST_SUCCESS != crust_status)
-    {
-        ocall_validate_close();
-        return;
-    }
-    std::string roots_str(reinterpret_cast<char*>(p_data), data_len);
-    free(p_data);
-    std::vector<std::string> roots_v;
-    size_t spos = 0, epos;
-    do
-    {
-        epos = roots_str.find(";", spos);
-        if (epos == roots_str.npos)
-        {
-            epos = roots_str.size();
-        }
-        roots_v.push_back(roots_str.substr(spos, epos - spos));
-        spos = epos + 1;
-    } 
-    while (epos != roots_str.size());
-    
     // Get to be checked files indexes
-    size_t check_file_num = roots_v.size();
-    if (roots_v.size() > MIN_VALIDATE_FILE_NUM)
+    size_t check_file_num = wl->files_json.length();
+    if (wl->files_json.length() > MIN_VALIDATE_FILE_NUM)
     {
-        check_file_num = roots_v.size() * MEANINGFUL_FILE_VALIDATE_RATE;
+        check_file_num = wl->files_json.length() * MEANINGFUL_FILE_VALIDATE_RATE;
     }
-    std::set<size_t> check_idx_s;
-    uint8_t rand_val;
+    std::set<uint32_t> file_idx_s;
+    uint32_t rand_val;
     size_t rand_index = 0;
-    while (check_idx_s.size() < check_file_num)
+    log_info("check file num:%ld\n", check_file_num);
+    while (file_idx_s.size() < check_file_num)
     {
         do
         {
-            sgx_read_rand((unsigned char *)&rand_val, 1);
-            rand_index = rand_val % roots_v.size();
+            sgx_read_rand((uint8_t *)&rand_val, 1);
+            rand_index = rand_val % wl->files_json.length();
         } 
-        while (check_idx_s.find(rand_index) != check_idx_s.end());
-        check_idx_s.insert(rand_index);
+        while (file_idx_s.find(rand_index) != file_idx_s.end());
+        file_idx_s.insert(rand_index);
     }
 
     // ----- Randomly check file block ----- //
-    for (auto it : check_idx_s)
+    // TODO: Do we allow store duplicated files?
+    std::vector<int> exist_indexes(wl->files_json.size(), 1);
+    int exist_acc = wl->files_json.size();
+    for (auto file_idx : file_idx_s)
     {
-        std::string root_hash = roots_v[it];
+        std::string root_hash = wl->files_json[file_idx]["hash"].ToString();
+        size_t file_block_num = wl->files_json[file_idx]["size"].ToInt();
+        long double tmp_double = file_block_num;
+        file_block_num = file_block_num / MAX_BLOCK_SIZE;
+        tmp_double = tmp_double / MAX_BLOCK_SIZE - file_block_num;
+        if (tmp_double > 0) file_block_num++;
+        log_debug("Validating file root hash:%s\n", root_hash.c_str());
         // Get tree string
         crust_status = persist_get(root_hash.c_str(), &p_data, &data_len);
         if (CRUST_SUCCESS != crust_status || 0 == data_len)
         {
             log_err("Validate meaningful data failed! Get tree:%s failed!\n", root_hash.c_str());
-            Workload::get_instance()->meaningful_files_hash_s.erase(root_hash);
+            exist_indexes[file_idx] = 0;
+            exist_acc--;
             continue;
         }
         std::string tree_str(reinterpret_cast<char *>(p_data), data_len);
         free(p_data);
         // Validate MerkleTree
+        size_t spos, epos;
         spos = epos = 0;
-        uint32_t block_acc = 0;
         std::string stag = "\"links_num\":0,\"hash\":\"";
-        std::string etag = "\",\"links\"";
-        while (block_acc < MAX_VALIDATE_BLOCK_NUM)
+        std::string etag = "\",\"size\"";
+        // Get to be checked block index
+        std::set<size_t> block_idx_s;
+        while (block_idx_s.size() < MAX_VALIDATE_BLOCK_NUM && block_idx_s.size() < file_block_num)
+        {
+            size_t tmp_idx = 0;
+            do
+            {
+                sgx_read_rand((uint8_t *)&rand_val, 4);
+                tmp_idx = rand_val % file_block_num;
+            }
+            while (block_idx_s.find(tmp_idx) != block_idx_s.end());
+            block_idx_s.insert(tmp_idx);
+        }
+        // Do check
+        size_t cur_block_idx = 0;
+        for (auto check_block_idx : block_idx_s)
         {
             // Get leaf node position
-            spos = tree_str.find(stag);
-            if (spos == tree_str.npos)
+            do
             {
-                break;
-            }
-            spos += stag.size();
-            epos = tree_str.find(etag, spos);
-            if (epos == tree_str.npos)
-            {
-                break;
-            }
-            // Randomly check file
-            sgx_read_rand((uint8_t *)&rand_val, 1);
-            if (rand_val % 2 == 0)
-            {
-                std::string leaf_hash = tree_str.substr(spos, epos - spos);
-                uint8_t *p_sealed_data = NULL;
-                size_t sealed_data_size = 0;
-                ocall_validate_get_file(&crust_status, root_hash.c_str(), leaf_hash.c_str(),
-                        &p_sealed_data, &sealed_data_size);
-                if (CRUST_SUCCESS != crust_status)
+                spos = tree_str.find(stag, spos);
+                if (spos == tree_str.npos)
                 {
-                    Workload::get_instance()->meaningful_files_hash_s.erase(root_hash);
                     break;
                 }
-                sgx_sha256_hash_t got_hash;
-                sgx_sha256_msg(p_sealed_data, sealed_data_size, &got_hash);
-                std::string leaf_hash_r = leaf_hash.substr(leaf_hash.find("_") + 1, leaf_hash.size());
-                uint8_t *leaf_hash_u = hex_string_to_bytes(leaf_hash_r.c_str(), leaf_hash_r.size());
-                if (memcmp(leaf_hash_u, got_hash, HASH_LENGTH) != 0)
-                {
-                    Workload::get_instance()->meaningful_files_hash_s.erase(root_hash);
-                    free(leaf_hash_u);
-                    break;
-                }
+                spos += stag.size();
+            }
+            while (cur_block_idx++ < check_block_idx);
+            if (spos == tree_str.npos || (epos = tree_str.find(etag, spos)) == tree_str.npos)
+            {
+                exist_indexes[file_idx] = 0;
+                exist_acc--;
+                break;
+            }
+            // Get block data
+            std::string leaf_hash = tree_str.substr(spos, epos - spos);
+            std::string block_str = std::to_string(check_block_idx).append("_").append(leaf_hash);
+            uint8_t *p_sealed_data = NULL;
+            size_t sealed_data_size = 0;
+            log_debug("Checking block hash:%ld_%s\n", check_block_idx, leaf_hash.c_str());
+            ocall_validate_get_file(&crust_status, root_hash.c_str(), block_str.c_str(),
+                    &p_sealed_data, &sealed_data_size);
+            if (CRUST_SUCCESS != crust_status)
+            {
+                exist_indexes[file_idx] = 0;
+                exist_acc--;
+                break;
+            }
+            // Validate hash
+            sgx_sha256_hash_t got_hash;
+            sgx_sha256_msg(p_sealed_data, sealed_data_size, &got_hash);
+            uint8_t *leaf_hash_u = hex_string_to_bytes(leaf_hash.c_str(), leaf_hash.size());
+            if (memcmp(leaf_hash_u, got_hash, HASH_LENGTH) != 0)
+            {
+                exist_indexes[file_idx] = 0;
+                exist_acc--;
                 free(leaf_hash_u);
-                spos = epos;
-                block_acc++;
+                break;
+            }
+            free(leaf_hash_u);
+            spos = epos;
+        }
+    }
+
+    // Delete not exists json
+    if (exist_acc != wl->files_json.size())
+    {
+        json::JSON new_files_json = json::Array();
+        for (size_t i = 0,j = 0; i < exist_indexes.size(); i++)
+        {
+            if (exist_indexes[i] == 1)
+            {
+                new_files_json[j] = wl->files_json[i];
+                j++;
             }
         }
+        wl->files_json = new_files_json;
     }
 
     ocall_validate_close();

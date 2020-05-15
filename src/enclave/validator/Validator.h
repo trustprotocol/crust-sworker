@@ -18,6 +18,7 @@
 #define MAX_VALIDATE_BLOCK_NUM 16
 /* The blocks of meaningful disk file verification ratio */
 #define MEANINGFUL_BLOCK_VALIDATE_RATE 0.05
+#define MAX_BLOCK_SIZE 1024*1024
 
 void validate_empty_disk(const char *path);
 bool validate_merkle_tree(MerkleTree *root, size_t *size);

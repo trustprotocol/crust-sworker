@@ -256,34 +256,26 @@ crust_status_t Workload::restore_workload(std::string plot_data)
     return crust_status;
 }
 
-void Workload::reset_meaningful_data()
+bool Workload::reset_meaningful_data()
 {
-    crust_status_t crust_status = CRUST_SUCCESS;
-
-    // Clear previous meaningful data
-    this->meaningful_files_hash_s.clear();
-    uint8_t *p_data = NULL;
-    size_t data_len = 0;
-    crust_status = persist_get("meaningful_roots", &p_data, &data_len);
+    // Get metadata
+    json::JSON meta_json;
+    crust_status_t crust_status = id_get_metadata(meta_json);
     if (CRUST_SUCCESS != crust_status)
     {
-        log_err("Workload: Get meaningful root hash failed!\n");
-        return;
+        log_err("Workload: Reset meaningful roots failed! Error code:%lx\n", crust_status);
+        return false;
     }
-    std::string roots(reinterpret_cast<char*>(p_data), data_len);
-    free(p_data);
 
-    // Set new meaningful data
-    size_t spos = 0, epos;
-    do
+    // Reset meaningful files
+    json::JSON meaningful_roots = meta_json["meaningful_roots"];
+    if (meaningful_roots.JSONType() != json::JSON::Class::Array)
     {
-        epos = roots.find(";", spos);
-        if (epos == roots.npos)
-        {
-            epos = roots.size();
-        }
-        this->meaningful_files_hash_s.insert(roots.substr(spos, epos - spos));
-        spos = epos + 1;
-    } 
-    while (epos != roots.size());
+        log_err("Workload: invalid meaningful roots!\n");
+        return false;
+    }
+
+    this->files_json = meta_json["meaningful_roots"];
+
+    return true;
 }

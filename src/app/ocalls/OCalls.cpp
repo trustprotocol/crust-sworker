@@ -12,6 +12,9 @@ size_t ocall_file_data_len = 0;
 // Used to store storage related data
 uint8_t *_storage_buffer = NULL;
 size_t _storage_buffer_len = 0;
+// Buffer used to store sealed data
+uint8_t *_sealed_data_buf = NULL;
+size_t _sealed_data_size = 0;
 // Used to validation websocket client
 WebsocketClient *wssclient = NULL;
 // Used to temporarily store sealed serialized MerkleTree
@@ -489,7 +492,7 @@ crust_status_t ocall_validate_init()
 
     wssclient = new WebsocketClient();
     Config *p_config = Config::get_instance();
-    UrlEndPoint *urlendpoint = get_url_end_point(p_config->api_base_url);
+    UrlEndPoint *urlendpoint = get_url_end_point(p_config->karst_url);
     if (! wssclient->websocket_init(urlendpoint->ip, std::to_string(urlendpoint->port), urlendpoint->base))
     {
         return CRUST_VALIDATE_INIT_WSS_FAILED;
@@ -497,7 +500,9 @@ crust_status_t ocall_validate_init()
 
     // Send backup to server
     std::string res;
-    if (! wssclient->websocket_request(p_config->chain_backup, res))
+    json::JSON backup_json;
+    backup_json["backup"] = p_config->chain_backup;
+    if (! wssclient->websocket_request(backup_json.dump(), res))
     {
         p_log->err("Validate failed! Send backup to server failed!\n");
         return CRUST_VALIDATE_WSS_REQUEST_FAILED;
@@ -505,7 +510,7 @@ crust_status_t ocall_validate_init()
     json::JSON res_json = json::JSON::Load(res);
     if (res_json["status"].ToInt() != 200)
     {
-        p_log->err("Validate failed! Error: %s\n", res.c_str());
+        p_log->err("Validate failed! Karst response: %s\n", res.c_str());
         return CRUST_VALIDATE_WSS_REQUEST_FAILED;
     }
 
@@ -520,21 +525,44 @@ crust_status_t ocall_validate_init()
  * @param sealed_data_size -> Sealed data size
  * @return: Get validation files status
  * */
+// TODO: malloc a const space for p_sealed_data
 crust_status_t ocall_validate_get_file(const char *root_hash, const char *leaf_hash,
         uint8_t **p_sealed_data, size_t *sealed_data_size)
 {
+    std::string leaf_hash_str(leaf_hash);
+    size_t spos = leaf_hash_str.find("_");
+    if (spos == leaf_hash_str.npos)
+    {
+        p_log->err("Invalid merkletree leaf hash!\n");
+        return CRUST_INVALID_MERKLETREE;
+    }
+    int node_index = atoi(leaf_hash_str.substr(0, spos).c_str());
+    std::string leaf_hash_r = leaf_hash_str.substr(spos + 1, leaf_hash_str.size());
+
     json::JSON req_json;
     req_json["file_hash"] = std::string(root_hash);
-    req_json["node_hash"] = std::string(leaf_hash);
+    req_json["node_hash"] = leaf_hash_r;
+    req_json["node_index"] = node_index;
     std::string res;
     if (! wssclient->websocket_request(req_json.dump(), res))
     {
         return CRUST_VALIDATE_WSS_REQUEST_FAILED;
     }
-    *p_sealed_data = (uint8_t *)malloc(res.size());
-    memset(*p_sealed_data, 0, res.size());
-    memcpy(*p_sealed_data, res.c_str(), res.size());
-    *sealed_data_size = res.size();
+    size_t data_size = res.size();
+    if (data_size > _sealed_data_size)
+    {
+        _sealed_data_buf = (uint8_t*)realloc(_sealed_data_buf, data_size);
+        if (_sealed_data_buf == NULL)
+        {
+            p_log->err("Validate: malloc buffer failed!\n");
+            return CRUST_MALLOC_FAILED;
+        }
+        _sealed_data_size = data_size;
+    }
+    memset(_sealed_data_buf, 0, _sealed_data_size);
+    memcpy(_sealed_data_buf, res.c_str(), data_size);
+    *p_sealed_data = _sealed_data_buf;
+    *sealed_data_size = data_size;
 
     return CRUST_SUCCESS;
 }
@@ -544,7 +572,17 @@ crust_status_t ocall_validate_get_file(const char *root_hash, const char *leaf_h
  * */
 void ocall_validate_close()
 {
-    wssclient->websocket_close();
-    delete wssclient;
-    wssclient = NULL;
+    if (wssclient != NULL)
+    {
+        wssclient->websocket_close();
+        delete wssclient;
+        wssclient = NULL;
+    }
+
+    if (_sealed_data_buf != NULL)
+    {
+        free(_sealed_data_buf);
+        _sealed_data_buf = NULL;
+        _sealed_data_size = 0;
+    }
 }
