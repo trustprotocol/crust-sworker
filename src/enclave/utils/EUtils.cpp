@@ -150,7 +150,7 @@ uint8_t *hex_string_to_bytes(const void *src, size_t len)
 
     const char *rsrc = (const char*)src;
     uint8_t *p_target;
-    uint8_t *target = (uint8_t *)malloc(len / 2);
+    uint8_t *target = (uint8_t *)enc_malloc(len / 2);
     if (target == NULL)
     {
         return NULL;

@@ -781,7 +781,7 @@ crust_status_t id_store_quote(const char *quote, size_t len, const uint8_t *p_da
  * @param locked -> Indicate whether lock current operation
  * @return: Get status
  * */
-crust_status_t id_get_metadata(json::JSON &meta_json, bool locked /*=true*/)
+void id_get_metadata(json::JSON &meta_json, bool locked /*=true*/)
 {
     if (locked)
         sgx_thread_mutex_lock(&g_metadata_mutex);
@@ -793,22 +793,26 @@ crust_status_t id_get_metadata(json::JSON &meta_json, bool locked /*=true*/)
     crust_status_t crust_status = persist_get("metadata", &p_data, &data_len);
     if (CRUST_SUCCESS != crust_status || data_len == 0)
     {
-        crust_status = CRUST_METADATA_NOTFOUND;
+        meta_json =  json::JSON();
         goto cleanup;
     }
     meta_json = json::JSON::Load(std::string(reinterpret_cast<char*>(p_data + strlen(TEE_PRIVATE_TAG)), data_len));
+    if (meta_json.size() == 0)
+    {
+        goto cleanup;
+    }
     // Verify meta data
     id_key_pair_str = meta_json["id_key_pair"].ToString();
     p_id_key = hex_string_to_bytes(id_key_pair_str.c_str(), id_key_pair_str.size());
     if (p_id_key == NULL)
     {
-        log_err("storage: Get id key pair failed!\n");
+        log_err("Identity: Get id key pair failed!\n");
         crust_status = CRUST_INVALID_META_DATA;
         goto cleanup;
     }
     if (g_is_set_id_key_pair && memcmp(p_id_key, &id_key_pair, sizeof(id_key_pair)) != 0)
     {
-        log_err("storage: Get wrong id key pair!\n");
+        log_err("Identity: Get wrong id key pair!\n");
         crust_status = CRUST_INVALID_META_DATA;
         goto cleanup;
     }
@@ -823,7 +827,7 @@ cleanup:
     if (locked)
         sgx_thread_mutex_unlock(&g_metadata_mutex);
 
-    return CRUST_SUCCESS;
+    return;
 }
 
 /**
@@ -839,11 +843,8 @@ crust_status_t id_metadata_set_by_new(json::JSON meta_json)
     std::string meta_str;
     size_t meta_len = 0;
     uint8_t *p_meta = NULL;
-    crust_status_t crust_status = id_get_metadata(meta_json_org, false);
-    if (CRUST_SUCCESS != crust_status)
-    {
-        goto cleanup;
-    }
+    crust_status_t crust_status = CRUST_SUCCESS;
+    id_get_metadata(meta_json_org, false);
     for (auto it : meta_json.ObjectRange())
     {
         meta_json_org[it.first] = it.second;
@@ -881,11 +882,8 @@ crust_status_t id_store_metadata()
     json::JSON meta_json;
     size_t meta_len = 0;
     uint8_t *p_meta = NULL;
-    crust_status_t crust_status = id_get_metadata(meta_json, false);
-    if (CRUST_SUCCESS != crust_status)
-    {
-        log_warn("Store metadata: get metadata failed!\n");
-    }
+    crust_status_t crust_status = CRUST_SUCCESS;
+    id_get_metadata(meta_json, false);
     meta_json["workload"] = Workload::get_instance()->serialize_workload();
     meta_json["id_key_pair"] = std::string(hexstring(&id_key_pair, sizeof(id_key_pair)));
     meta_json["block_height"] = now_work_report_block_height;
@@ -924,22 +922,25 @@ crust_status_t id_restore_metadata()
 {
     // Get metadata
     json::JSON meta_json;
-    crust_status_t crust_status = id_get_metadata(meta_json);
-    if (CRUST_SUCCESS != crust_status)
+    crust_status_t crust_status = CRUST_SUCCESS;
+    id_get_metadata(meta_json);
+    if (meta_json.size() <= 0)
     {
-        log_err("Restore metadata failed! Error code: %lx\n", crust_status);
-        return crust_status;
+        log_warn("Get empty metadata, cannot restore metadata!\n");
+        return CRUST_UNEXPECTED_ERROR;
     }
 
     // Restore workload
-    std::string workload = meta_json["workload"].ToString();
-    crust_status = Workload::get_instance()->restore_workload(workload);
+    Workload *wl = Workload::get_instance();
+    std::string workload_str = meta_json["workload"].ToString();
+    remove_char(workload_str, '\\');
+    crust_status = wl->restore_workload(json::JSON::Load(workload_str));
     if (CRUST_SUCCESS != crust_status)
     {
         return CRUST_BAD_SEAL_DATA;
     }
     // Restore meaningful files
-    Workload::get_instance()->files_json = meta_json["meaningful_roots"];
+    wl->files_json = meta_json[MEANINGFUL_FILE_DB_TAG];
     // Restore id key pair
     std::string id_key_pair_str = meta_json["id_key_pair"].ToString();
     uint8_t *p_id_key = hex_string_to_bytes(id_key_pair_str.c_str(), id_key_pair_str.size());
@@ -1025,10 +1026,5 @@ size_t id_get_cwr_block_height()
  * */
 void id_set_cwr_block_height(size_t block_height)
 {
-    if (CRUST_SUCCESS != id_metadata_set_or_append("block_height", block_height))
-    {
-        log_err("Set block height failed!\n");
-        return;
-    }
     now_work_report_block_height = block_height;
 }

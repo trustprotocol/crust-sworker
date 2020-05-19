@@ -117,90 +117,6 @@ void validate_empty_disk(const char *path)
     }
 }
 
-/* Question: use files[i].cid will cause error. Files copy to envlave or files address copy to enclave? */
-/**
- * @description: validate meaningful disk
- * @param files -> the changed files
- * @param files_num -> the number of changed files
- */
-void validate_meaningful_disk(const Node *files, size_t files_num)
-{
-    /* Remove deleted files */
-    Workload *p_workload = Workload::get_instance();
-    for (size_t i = 0; i < files_num; i++)
-    {
-        if (files[i].exist == 0)
-        {
-            log_warn("Delete: Hash->%s, Size->%luB\n", unsigned_char_array_to_hex_string(files[i].hash, HASH_LENGTH).c_str(), files[i].size);
-            p_workload->files.erase(unsigned_char_array_to_unsigned_char_vector(files[i].hash, HASH_LENGTH));
-        }
-    }
-
-    /* Validate old files */
-    for (auto it = p_workload->files.begin(); it != p_workload->files.end(); it++)
-    {
-        unsigned char rand_val;
-        sgx_read_rand((unsigned char *)&rand_val, 1);
-
-        if (rand_val < 256 * MEANINGFUL_FILE_VALIDATE_RATE)
-        {
-            // Get merkle tree of file
-            MerkleTree *tree = NULL;
-            std::string root_hash = unsigned_char_array_to_hex_string(it->first.data(), HASH_LENGTH);
-            ocall_get_merkle_tree(root_hash.c_str(), &tree);
-
-            if (tree == NULL)
-            {
-                log_warn("\n!!!!USER CHEAT: CAN'T GET %s FILE!!!!\n", root_hash.c_str());
-                return;
-            }
-
-            // Validate merkle tree
-            size_t merkle_tree_size = 0;
-            if (!validate_merkle_tree(tree, &merkle_tree_size) || merkle_tree_size != it->second)
-            {
-                log_warn("\n!!!!USER CHEAT: %s FILE IS NOT COMPLETED!!!!\n", root_hash.c_str());
-                return;
-            }
-        }
-    }
-
-    /* Validate new files */
-    for (size_t i = 0; i < files_num; i++)
-    {
-        if (files[i].exist != 0)
-        {
-            unsigned char rand_val;
-            sgx_read_rand((unsigned char *)&rand_val, 1);
-
-            if (rand_val < 256 * MEANINGFUL_FILE_VALIDATE_RATE)
-            {
-                // Get merkle tree of file
-                MerkleTree *tree = NULL;
-                std::string root_hash = unsigned_char_array_to_hex_string(files[i].hash, HASH_LENGTH);
-                ocall_get_merkle_tree(root_hash.c_str(), &tree);
-
-                if (tree == NULL)
-                {
-                    log_warn("\n!!!!USER CHEAT: CAN'T GET %s FILE!!!!\n", root_hash.c_str());
-                    return;
-                }
-
-                // Validate merkle tree
-                size_t merkle_tree_size = 0;
-                if (!validate_merkle_tree(tree, &merkle_tree_size) || merkle_tree_size != files[i].size)
-                {
-                    log_warn("\n!!!!USER CHEAT: %s FILE IS NOT COMPLETED!!!!\n", root_hash.c_str());
-                    return;
-                }
-            }
-
-            log_info("Add: Hash->%s, Size->%luB\n", unsigned_char_array_to_hex_string(files[i].hash, HASH_LENGTH).c_str(), files[i].size);
-            p_workload->files.insert(std::pair<std::vector<unsigned char>, size_t>(unsigned_char_array_to_unsigned_char_vector(files[i].hash, HASH_LENGTH), files[i].size));
-        }
-    }
-}
-
 /**
  * @description: validate merkle tree recursively
  * @param root -> the root of merkle tree
@@ -348,10 +264,7 @@ void validate_meaningful_file()
     {
         std::string root_hash = wl->files_json[file_idx]["hash"].ToString();
         size_t file_block_num = wl->files_json[file_idx]["size"].ToInt();
-        long double tmp_double = file_block_num;
         file_block_num = file_block_num / MAX_BLOCK_SIZE;
-        tmp_double = tmp_double / MAX_BLOCK_SIZE - file_block_num;
-        if (tmp_double > 0) file_block_num++;
         log_debug("Validating file root hash:%s\n", root_hash.c_str());
         // Get tree string
         crust_status = persist_get(root_hash.c_str(), &p_data, &data_len);
@@ -399,6 +312,7 @@ void validate_meaningful_file()
             while (cur_block_idx++ < check_block_idx);
             if (spos == tree_str.npos || (epos = tree_str.find(etag, spos)) == tree_str.npos)
             {
+                log_err("Find leaf node failed!node index:%ld\n", check_block_idx);
                 exist_indexes[file_idx] = 0;
                 exist_acc--;
                 break;
@@ -413,6 +327,7 @@ void validate_meaningful_file()
                     &p_sealed_data, &sealed_data_size);
             if (CRUST_SUCCESS != crust_status)
             {
+                log_err("Get file block:%ld failed!\n", check_block_idx);
                 exist_indexes[file_idx] = 0;
                 exist_acc--;
                 break;
@@ -423,6 +338,7 @@ void validate_meaningful_file()
             uint8_t *leaf_hash_u = hex_string_to_bytes(leaf_hash.c_str(), leaf_hash.size());
             if (memcmp(leaf_hash_u, got_hash, HASH_LENGTH) != 0)
             {
+                log_err("Index:%ld block hash is not expected!\n", check_block_idx);
                 exist_indexes[file_idx] = 0;
                 exist_acc--;
                 free(leaf_hash_u);

@@ -28,7 +28,7 @@ namespace json
 
 /* Main loop waiting time (us) */
 #define MAIN_LOOP_WAIT_TIME 10000000
-#define LOG_BUF_SIZE 32*1024
+#define LOG_BUF_SIZE 32768 /* 32*1024 */
 /* The length of hash */
 #define HASH_LENGTH 32
 

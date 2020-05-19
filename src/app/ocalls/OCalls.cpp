@@ -2,6 +2,7 @@
 #include "DataBase.h"
 #include "FileUtils.h"
 #include "Config.h"
+#include "BufferPool.h"
 #include <exception>
 
 crust::Log *p_log = crust::Log::get_instance();
@@ -17,6 +18,8 @@ uint8_t *_sealed_data_buf = NULL;
 size_t _sealed_data_size = 0;
 // Used to validation websocket client
 WebsocketClient *wssclient = NULL;
+// Buffer pool
+BufferPool *p_buf_pool = BufferPool::get_instance();
 // Used to temporarily store sealed serialized MerkleTree
 std::map<std::string, std::string> sealed_tree_map;
 
@@ -416,7 +419,7 @@ crust_status_t ocall_get_file_block_by_path(char * /*root_hash*/, char * /*cur_h
  * */
 crust_status_t ocall_persist_add(const char *key, const uint8_t *value, size_t value_len)
 {
-    return crust::DataBase::get_instance()->add(std::string(key), std::string(hexstring(value, value_len)));
+    return crust::DataBase::get_instance()->add(std::string(key), std::string((const char*)value, value_len));
 }
 
 /**
@@ -438,7 +441,7 @@ crust_status_t ocall_persist_del(const char *key)
  * */
 crust_status_t ocall_persist_set(const char *key, const uint8_t *value, size_t value_len)
 {
-    return crust::DataBase::get_instance()->set(std::string(key), std::string(hexstring(value, value_len)));
+    return crust::DataBase::get_instance()->set(std::string(key), std::string((const char*)value, value_len));
 }
 
 /**
@@ -452,12 +455,16 @@ crust_status_t ocall_persist_get(const char *key, uint8_t **value, size_t *value
 {
     std::string val;
     crust_status_t crust_status = crust::DataBase::get_instance()->get(std::string(key), val);
-    *value = hex_string_to_bytes(val.c_str(), val.size());
-    if (*value == NULL)
+    if (CRUST_SUCCESS != crust_status)
     {
-        return CRUST_PERSIST_GET_FAILED;
+        *value_len = 0;
+        return crust_status;
     }
-    *value_len = val.size() / 2;
+    *value_len = val.size();
+    // Get buffer
+    uint8_t *p_buffer = p_buf_pool->get_buffer(*value_len);
+    memcpy(p_buffer, val.c_str(), *value_len);
+    *value = p_buffer;
 
     return crust_status;
 }

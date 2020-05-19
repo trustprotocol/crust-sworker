@@ -3,7 +3,6 @@
 
 /* used to store work report */
 std::string work_report;
-size_t meaningful_workload;
 size_t empty_workload;
 sgx_sha256_hash_t empty_root;
 
@@ -19,12 +18,6 @@ crust_status_t generate_work_report(size_t *report_len)
     crust_status_t crust_status = CRUST_SUCCESS;
 
     crust_status = p_workload->generate_empty_info(&empty_root, &empty_workload);
-    if (crust_status != CRUST_SUCCESS)
-    {
-        return crust_status;
-    }
-
-    crust_status = p_workload->generate_meaningful_info(&meaningful_workload);
     if (crust_status != CRUST_SUCCESS)
     {
         return crust_status;

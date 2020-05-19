@@ -36,6 +36,15 @@ DataBase *DataBase::get_instance()
 }
 
 /**
+ * @description: Close leveldb
+ * */
+DataBase::~DataBase()
+{
+    if (this->db != NULL)
+        delete this->db;
+}
+
+/**
  * @description: Add key value pair to db
  * @param key -> key
  * @param value -> value

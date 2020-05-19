@@ -10,6 +10,7 @@
 #include "EUtils.h"
 #include "EJson.h"
 #include "Persistence.h"
+#include "Parameter.h"
 #include "sgx_thread.h"
 #include <sgx_report.h>
 #include <string>
@@ -69,7 +70,7 @@ ecc_key_pair id_get_key_pair();
 size_t id_get_cwr_block_height();
 void id_set_cwr_block_height(size_t block_height);
 
-crust_status_t id_get_metadata(json::JSON &meta_json, bool locked = true);
+void id_get_metadata(json::JSON &meta_json, bool locked = true);
 /**
  * @description: Set or append metadata responding key
  * @param key -> Indicated key
@@ -87,13 +88,10 @@ crust_status_t id_metadata_set_or_append(const char *key, T val, metadata_op_e o
     json::JSON meta_json;
     size_t meta_len = 0;
     uint8_t *p_meta = NULL;
-    crust_status_t crust_status = id_get_metadata(meta_json, false);
-    if (CRUST_SUCCESS != crust_status)
-    {
-        goto cleanup;
-    }
+    crust_status_t crust_status = CRUST_SUCCESS;
+    id_get_metadata(meta_json, false);
 
-    // Check if responding entry is set or append
+    // Check if corresponding entry is set or append
     if (ID_APPEND == op)
     {
         if (meta_json.hasKey(key_str) && meta_json[key_str].JSONType() != json::JSON::Class::Array)

@@ -108,7 +108,7 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
     json::JSON file_entry_json;
     file_entry_json["hash"] = new_root_hash_str;
     file_entry_json["size"] = node_size;
-    crust_status = id_metadata_set_or_append("meaningful_roots", file_entry_json, ID_APPEND);
+    crust_status = id_metadata_set_or_append(MEANINGFUL_FILE_DB_TAG, file_entry_json, ID_APPEND);
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
@@ -145,7 +145,6 @@ crust_status_t storage_seal_file(MerkleTree *root, const char *path, size_t path
 
     json::JSON cur_data;
     id_get_metadata(cur_data);
-    log_info("==== metadata:%s\n", cur_data.dump().c_str());
 
     return crust_status;
 }
