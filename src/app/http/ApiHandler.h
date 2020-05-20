@@ -230,7 +230,6 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
             size_t dqsz = 0;
             sgx_quote_t *quote;
             json::JSON req_json = json::JSON::Load(req.body());
-            p_log->info("request body:%s\n", req_json.dump().c_str());
             std::string b64quote = req_json["isvEnclaveQuote"].ToString();
             std::string off_chain_chain_address = req_json["chain_address"].ToString();
             std::string off_chain_chain_account_id = req_json["chain_account_id"].ToString();
@@ -308,7 +307,7 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
                 delete client;
                 goto postcleanup;
             }
-            p_log->info("Sending quote to IAS service successfully!%s\n", ias_res.body().c_str());
+            p_log->info("Sending quote to IAS service successfully!\n");
 
             std::vector<const char *> ias_report;
             std::string ias_cer(ias_res["X-IASReport-Signing-Certificate"]);
@@ -675,7 +674,7 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
                 {
                     error_info = "Invoke SGX api failed!";
                 }
-                p_log->info("Seal data failed!Error code:%lx(%s)\n", crust_status, error_info.c_str());
+                p_log->err("Seal data failed!Error code:%lx(%s)\n", crust_status, error_info.c_str());
                 res_json["body"] = error_info;
                 res.result(405);
             }

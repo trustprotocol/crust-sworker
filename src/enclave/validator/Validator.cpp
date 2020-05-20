@@ -247,7 +247,7 @@ void validate_meaningful_file()
     std::set<uint32_t> file_idx_s;
     uint32_t rand_val;
     size_t rand_index = 0;
-    log_info("check file num:%ld\n", check_file_num);
+    log_debug("check file num:%ld\n", check_file_num);
     while (file_idx_s.size() < check_file_num)
     {
         do
