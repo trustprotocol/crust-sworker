@@ -35,28 +35,38 @@ struct ci
 
 using ApiHeaders = std::multimap<std::string, std::string, detail::ci>;
 
-class ApiClient
+class HttpClient
 {
 public:
-    int Post(std::string url);
-    int Post(std::string url, std::string body);
-    int Post(std::string url, std::string body, ApiHeaders &headers);
-    int SSLPost(std::string url);
-    int SSLPost(std::string url, std::string body);
-    int SSLPost(std::string url, std::string body, ApiHeaders &headers);
-    int Get(std::string url);
-    int Get(std::string url, std::string body);
-    int Get(std::string url, std::string body, ApiHeaders &headers);
-    int SSLGet(std::string url);
-    int SSLGet(std::string url, std::string body);
-    int SSLGet(std::string url, std::string body, ApiHeaders &headers);
+    http::response<http::string_body> Get(std::string url);
+    http::response<http::string_body> Get(std::string url, std::string body);
+    http::response<http::string_body> Get(std::string url, std::string body, std::string content_type);
+    http::response<http::string_body> Get(std::string url, std::string body, ApiHeaders &headers);
+    http::response<http::string_body> Get(std::string url, std::string body, std::string content_type, ApiHeaders &headers);
+    http::response<http::string_body> Post(std::string url);
+    http::response<http::string_body> Post(std::string url, std::string body);
+    http::response<http::string_body> Post(std::string url, std::string body, std::string content_type);
+    http::response<http::string_body> Post(std::string url, std::string body, ApiHeaders &headers);
+    http::response<http::string_body> Post(std::string url, std::string body, std::string content_type, ApiHeaders &headers);
+
+    http::response<http::string_body> SSLGet(std::string url);
+    http::response<http::string_body> SSLGet(std::string url, std::string body);
+    http::response<http::string_body> SSLGet(std::string url, std::string body, std::string content_type);
+    http::response<http::string_body> SSLGet(std::string url, std::string body, ApiHeaders &headers);
+    http::response<http::string_body> SSLGet(std::string url, std::string body, std::string content_type, ApiHeaders &headers);
+    http::response<http::string_body> SSLPost(std::string url);
+    http::response<http::string_body> SSLPost(std::string url, std::string body);
+    http::response<http::string_body> SSLPost(std::string url, std::string body, std::string content_type);
+    http::response<http::string_body> SSLPost(std::string url, std::string body, ApiHeaders &headers);
+    http::response<http::string_body> SSLPost(std::string url, std::string body, std::string content_type, ApiHeaders &headers);
+
 private:
-    int request_sync_ssl(http::verb method, std::string url, std::string body, ApiHeaders *headers);
-    int request_sync(http::verb method, std::string url, std::string body, ApiHeaders *headers);
+    http::response<http::string_body> request_sync_ssl(http::verb method, std::string url, std::string body, std::string content_type = "text/plain", ApiHeaders *headers = NULL);
+    http::response<http::string_body> request_sync(http::verb method, std::string url, std::string body, std::string content_type = "text/plain", ApiHeaders *headers = NULL);
 };
 
 
-inline void load_root_certificates(ssl::context& ctx, boost::system::error_code& ec)
+inline void load_root_certificates_http(ssl::context& ctx, boost::system::error_code& ec)
 {
     std::string const cert =
         /*  This is the DigiCert Global Root CA
@@ -127,10 +137,10 @@ inline void load_root_certificates(ssl::context& ctx, boost::system::error_code&
 
 // Load the root certificates into an ssl::context
 
-inline void load_root_certificates(ssl::context& ctx)
+inline void load_root_certificates_http(ssl::context& ctx)
 {
     boost::system::error_code ec;
-    load_root_certificates(ctx, ec);
+    load_root_certificates_http(ctx, ec);
     if(ec)
         throw boost::system::system_error{ec};
 }

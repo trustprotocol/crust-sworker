@@ -16,7 +16,7 @@
 #include "IASReport.h"
 #include "SgxSupport.h"
 #include "Resource.h"
-#include "HttpLib.h"
+#include "HttpClient.h"
 #include "FileUtils.h"
 #include "Log.h"
 #include "Json.hpp"
@@ -274,28 +274,23 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
             }
             p_log->info("Storing quote in enclave successfully!\n");
 
-            // Request IAS verification
-            httplib::SSLClient *client = new httplib::SSLClient(p_config->ias_base_url);
-            httplib::Headers headers = {
+            // ----- Request IAS verification ----- //
+            HttpClient *client = new HttpClient();
+            ApiHeaders headers = {
                 {"Ocp-Apim-Subscription-Key", p_config->ias_primary_subscription_key}
                 //{"Content-Type", "application/json"}
             };
-            client->set_timeout_sec(IAS_TIMEOUT);
-
             std::string body = "{\n\"isvEnclaveQuote\":\"";
             body.append(b64quote);
             body.append("\"\n}");
-
             std::string resStr;
-            json::JSON res_json;
-            std::shared_ptr<httplib::Response> ias_res;
-
+            http::response<http::string_body> ias_res;
             // Send quote to IAS service
             int net_tryout = IAS_TRYOUT;
             while (net_tryout > 0)
             {
-                ias_res = client->Post(p_config->ias_base_path.c_str(), headers, body, "application/json");
-                if (!(ias_res && ias_res->status == 200))
+                ias_res = client->SSLPost(p_config->ias_base_url+p_config->ias_base_path, body, "application/json", headers);
+                if ((int)ias_res.result() != 200)
                 {
                     p_log->err("Send to IAS failed! Trying again...(%d)\n", IAS_TRYOUT - net_tryout + 1);
                     sleep(3);
@@ -305,7 +300,7 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
                 break;
             }
 
-            if (!(ias_res && ias_res->status == 200))
+            if ((int)ias_res.result() != 200)
             {
                 p_log->err("Request IAS failed!\n");
                 res.body() = "Request IAS failed!";
@@ -313,14 +308,14 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
                 delete client;
                 goto postcleanup;
             }
-            res_json = json::JSON::Load(ias_res->body);
-            p_log->info("Sending quote to IAS service successfully!\n");
+            p_log->info("Sending quote to IAS service successfully!%s\n", ias_res.body().c_str());
 
-            httplib::Headers res_headers = ias_res->headers;
             std::vector<const char *> ias_report;
-            ias_report.push_back(res_headers.find("X-IASReport-Signing-Certificate")->second.c_str());
-            ias_report.push_back(res_headers.find("X-IASReport-Signature")->second.c_str());
-            ias_report.push_back(ias_res->body.c_str());
+            std::string ias_cer(ias_res["X-IASReport-Signing-Certificate"]);
+            std::string ias_sig(ias_res["X-IASReport-Signature"]);
+            ias_report.push_back(ias_cer.c_str());
+            ias_report.push_back(ias_sig.c_str());
+            ias_report.push_back(ias_res.body().c_str());
 
             // Identity info
             ias_report.push_back(off_chain_chain_account_id.c_str()); //[3]

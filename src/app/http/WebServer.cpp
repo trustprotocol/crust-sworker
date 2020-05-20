@@ -480,7 +480,6 @@ public:
 
         // Send the response
         api_handler_->http_handler(*doc_root_, parser_->release(), queue_, is_ssl_);
-        //handle_http_request(*doc_root_, parser_->release(), queue_);
 
         // If we aren't at the Queue limit, try to pipeline another request
         if(! queue_.is_full())

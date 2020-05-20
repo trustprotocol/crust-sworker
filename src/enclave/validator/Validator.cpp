@@ -4,6 +4,9 @@
 
 extern sgx_thread_mutex_t g_workload_mutex;
 
+// For timeout
+long long g_validate_timeout = 0;
+
 /**
  * @description: validate empty disk
  * @param path -> the empty disk path
@@ -365,4 +368,9 @@ void validate_meaningful_file()
     }
 
     ocall_validate_close();
+}
+
+void validate_timeout()
+{
+    return;
 }

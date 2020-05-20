@@ -90,7 +90,7 @@ crust_status_t get_signed_work_report(const char *block_hash, size_t block_heigh
         + HASH_LENGTH 
         + reserved_str.size() 
         + files.size();
-    uint8_t *sigbuf = (uint8_t *)malloc(sigbuf_len);
+    uint8_t *sigbuf = (uint8_t *)enc_malloc(sigbuf_len);
     memset(sigbuf, 0, sigbuf_len);
     uint8_t *p_sigbuf = sigbuf;
     // Public key

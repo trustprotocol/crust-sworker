@@ -2,6 +2,8 @@
 #include "Resource.h"
 #include "FormatUtils.h"
 
+crust::Log *p_log = crust::Log::get_instance();
+
 /**
  * @description: get url end point from url
  * @param url base url, like: http://127.0.0.1:56666/api/v1
@@ -9,19 +11,47 @@
  * */
 UrlEndPoint *get_url_end_point(std::string url)
 {
-    std::vector<std::string> fields;
-    boost::split(fields, url, boost::is_any_of(":"));
     UrlEndPoint *url_end_point = new UrlEndPoint();
-    url_end_point->ip = fields[1].substr(2);
+    std::string proto_type;
+    size_t spos = 0, epos;
 
-    std::vector<std::string> fields2;
-    boost::split(fields2, fields[2], boost::is_any_of("/"));
-
-    url_end_point->port = std::stoi(fields2[0]);
-    url_end_point->base = "";
-    for (size_t i = 1; i < fields2.size(); i++)
+    // Get protocal tag
+    epos = url.find("://");
+    if (epos != url.npos)
     {
-        url_end_point->base += "/" + fields2[i];
+        proto_type = url.substr(0, epos);
+        spos = epos + std::strlen("://");
+    }
+
+    // Get host, port and path
+    epos = url.find(":", spos);
+    if (epos == url.npos)
+    {
+        epos = url.find("/", spos);
+        url_end_point->ip = url.substr(spos, epos - spos);
+        url_end_point->base = url.substr(epos, url.size());
+        p_log->warn("Parse url warn: Port not indicate, will assign port by protocol.\n");
+        if (proto_type.compare("https") == 0)
+        {
+            url_end_point->port = 443;
+        }
+        else if (proto_type.compare("http") == 0)
+        {
+            url_end_point->port = 80;
+        }
+        else
+        {
+            p_log->warn("Parse url warn: Cannot assign port by protocal!\n");
+        }
+        p_log->info("Parse url warn: Set port to:%d\n", url_end_point->port);
+    }
+    else
+    {
+        url_end_point->ip = url.substr(spos, epos - spos);
+        spos = epos + 1;
+        epos = url.find("/", spos);
+        url_end_point->port = std::atoi(url.substr(spos, epos - spos).c_str());
+        url_end_point->base = url.substr(epos, url.size());
     }
 
     return url_end_point;
