@@ -186,14 +186,6 @@ int process_run()
     p_log->info("WorkerPID = %d\n", worker_pid);
     p_log->info("Worker global eid: %d\n", global_eid);
 
-    // For test
-    size_t report_len = 0;
-    char *report = NULL;
-    sgx_ec256_signature_t ecc_signature;
-    json::JSON work_json;
-    std::string work_str;
-    std::string report_str;
-
     // Init conifigure
     if (!initialize_config())
     {
@@ -303,25 +295,6 @@ int process_run()
             goto cleanup;
         }
     }
-
-    // For test
-    report_len = 0;
-    ecall_generate_work_report(global_eid, &crust_status, &report_len);
-    report = (char *)malloc(report_len);
-    memset(report, 0, report_len);
-    ecall_get_signed_work_report(global_eid, &crust_status,
-            "05404b690b0c785bf180b2dd82a431d88d29baf31346c53dbda95e83e34c8a75", 300, &ecc_signature, report, report_len);
-    report_str = std::string(report, report_len);
-    p_log->info("report:%s\n",report_str.c_str());
-    work_json = json::JSON::Load(report_str);
-    work_json["sig"] = hexstring((const uint8_t *)&ecc_signature, sizeof(ecc_signature));
-    work_json["block_height"] = 300;
-    work_json["block_hash"] = "05404b690b0c785bf180b2dd82a431d88d29baf31346c53dbda95e83e34c8a75";
-    work_str = work_json.dump();
-    remove_char(work_str, '\\');
-    remove_char(work_str, '\n');
-    remove_char(work_str, ' ');
-    p_log->info("Sign validation report successfully!\n%s\n", work_str.c_str());
 
     // Main validate loop
     ecall_main_loop(global_eid, p_config->empty_path.c_str());
