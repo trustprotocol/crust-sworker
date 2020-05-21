@@ -22,6 +22,22 @@ crust_status_t generate_work_report(size_t *report_len)
     {
         return crust_status;
     }
+    
+    // Get old hash
+    Workload *wl = Workload::get_instance();
+    for (int i = 0; i < wl->files_json.size(); i++)
+    {
+        uint8_t *p_meta = NULL;
+        size_t meta_len = 0;
+        crust_status = persist_get((wl->files_json[i]["hash"].ToString()+"_meta").c_str(), &p_meta, &meta_len);
+        if (CRUST_SUCCESS != crust_status || p_meta == NULL)
+        {
+            return CRUST_STORAGE_UNSEAL_FILE_FAILED;
+        }
+        std::string tree_meta(reinterpret_cast<char*>(p_meta), meta_len);
+        json::JSON meta_json = json::JSON::Load(tree_meta);
+        wl->files_json[i]["hash"] = meta_json["old_hash"].ToString();
+    }
 
     json::JSON report_json;
     report_json["pub_key"] = std::string((const char *)hexstring(&id_key_pair.pub_key, sizeof(id_key_pair.pub_key)));
@@ -34,9 +50,6 @@ crust_status_t generate_work_report(size_t *report_len)
     report_json["files"] = Workload::get_instance()->files_json;
     work_report = report_json.dump();
     *report_len = work_report.length();
-
-    // Reset meaningful data
-    Workload::get_instance()->reset_meaningful_data();
 
     return crust_status;
 }
@@ -130,8 +143,10 @@ crust_status_t get_signed_work_report(const char *block_hash, size_t block_heigh
     }
 
     // Get work report string
-    log_info("report:%s\n", work_report.c_str());
     memcpy(report, work_report.c_str(), work_report.size());
+
+    // Reset meaningful data
+    Workload::get_instance()->reset_meaningful_data();
 
 
 cleanup:
