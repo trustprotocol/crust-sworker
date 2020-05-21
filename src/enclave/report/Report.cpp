@@ -30,7 +30,7 @@ crust_status_t generate_work_report(size_t *report_len)
     //remove_char(files_str, '\\');
     //remove_char(files_str, '\n');
     //remove_char(files_str, ' ');
-    log_info("files str:%s\n", files_str.c_str());
+    //log_info("files str:%s\n", files_str.c_str());
     report_json["files"] = Workload::get_instance()->files_json.dump();
     work_report = report_json.dump();
     *report_len = work_report.length();
