@@ -31,7 +31,7 @@ crust_status_t generate_work_report(size_t *report_len)
     //remove_char(files_str, '\n');
     //remove_char(files_str, ' ');
     //log_info("files str:%s\n", files_str.c_str());
-    report_json["files"] = Workload::get_instance()->files_json.dump();
+    report_json["files"] = Workload::get_instance()->files_json;
     work_report = report_json.dump();
     *report_len = work_report.length();
 
@@ -47,10 +47,9 @@ crust_status_t generate_work_report(size_t *report_len)
  * @param report_len (in) -> the length of validation report
  * @return: status
  */
-crust_status_t get_work_report(char *report, size_t report_len)
+crust_status_t get_work_report(char *report, size_t /*report_len*/)
 {
-    std::copy(work_report.begin(), work_report.end(), report);
-    report[report_len - 1] = '\0';
+    memcpy(report, work_report.c_str(), work_report.size());
     return CRUST_SUCCESS;
 }
 
