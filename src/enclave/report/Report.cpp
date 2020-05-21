@@ -25,13 +25,13 @@ crust_status_t generate_work_report(size_t *report_len)
 
     json::JSON report_json;
     report_json["pub_key"] = std::string((const char *)hexstring(&id_key_pair.pub_key, sizeof(id_key_pair.pub_key)));
-    report_json["reserved"] = std::to_string(empty_workload);
-    std::string files_str = Workload::get_instance()->files_json.dump();
-    remove_char(files_str, '\\');
-    remove_char(files_str, '\n');
-    remove_char(files_str, ' ');
+    report_json["reserved"] = empty_workload;
+    //std::string files_str = Workload::get_instance()->files_json.dump();
+    //remove_char(files_str, '\\');
+    //remove_char(files_str, '\n');
+    //remove_char(files_str, ' ');
     log_info("files str:%s\n", files_str.c_str());
-    report_json["files"] = files_str;
+    report_json["files"] = Workload::get_instance()->files_json.dump();
     work_report = report_json.dump();
     *report_len = work_report.length();
 
