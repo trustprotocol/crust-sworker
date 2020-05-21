@@ -25,6 +25,7 @@ crust_status_t generate_work_report(size_t *report_len)
     
     // Get old hash
     Workload *wl = Workload::get_instance();
+    json::JSON old_files_json;
     for (int i = 0; i < wl->files_json.size(); i++)
     {
         uint8_t *p_meta = NULL;
@@ -36,18 +37,13 @@ crust_status_t generate_work_report(size_t *report_len)
         }
         std::string tree_meta(reinterpret_cast<char*>(p_meta), meta_len);
         json::JSON meta_json = json::JSON::Load(tree_meta);
-        wl->files_json[i]["hash"] = meta_json["old_hash"].ToString();
+        old_files_json[i]["hash"] = meta_json["old_hash"].ToString();
     }
 
     json::JSON report_json;
     report_json["pub_key"] = std::string((const char *)hexstring(&id_key_pair.pub_key, sizeof(id_key_pair.pub_key)));
     report_json["reserved"] = empty_workload;
-    //std::string files_str = Workload::get_instance()->files_json.dump();
-    //remove_char(files_str, '\\');
-    //remove_char(files_str, '\n');
-    //remove_char(files_str, ' ');
-    //log_info("files str:%s\n", files_str.c_str());
-    report_json["files"] = Workload::get_instance()->files_json;
+    report_json["files"] = old_files_json;
     work_report = report_json.dump();
     *report_len = work_report.length();
 
@@ -93,7 +89,8 @@ crust_status_t get_signed_work_report(const char *block_hash, size_t block_heigh
     uint8_t *block_hash_u = NULL;
     std::string block_height_str = std::to_string(block_height);
     std::string reserved_str = std::to_string(empty_workload);
-    std::string files = Workload::get_instance()->files_json.dump();
+    std::string files = json::JSON::Load(work_report)["files"].dump();
+    //std::string files = Workload::get_instance()->files_json.dump();
     remove_char(files, '\\');
     remove_char(files, '\n');
     remove_char(files, ' ');
