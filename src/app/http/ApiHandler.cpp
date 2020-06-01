@@ -161,8 +161,8 @@ int ApiHandler::start()
             ias_res = client->Post(p_config->ias_base_path.c_str(), headers, body, "application/json");
             if (!(ias_res && ias_res->status == 200))
             {
-                p_log->err("Send to IAS failed! Trying again...(%d)\n", IAS_TRYOUT - net_tryout + 1);
-                sleep(3);
+                p_log->warn("Send to IAS. Trying again...(%d)\n", IAS_TRYOUT - net_tryout + 1);
+                sleep(6);
                 net_tryout--;
                 continue;
             }
@@ -171,7 +171,7 @@ int ApiHandler::start()
 
         if (!(ias_res && ias_res->status == 200))
         {
-            p_log->err("Request IAS failed!\n");
+            p_log->warn("Request IAS failed!\n");
             res.set_content("Request IAS failed!", "text/plain");
             res.status = 402;
             delete client;
@@ -291,7 +291,6 @@ int ApiHandler::start()
                     p_log->err("Verify IAS report failed! Bad enclave code measurement!!\n");
                     break;
                 case CRUST_IAS_UNEXPECTED_ERROR:
-                    p_log->err("Verify IAS report failed! unexpected error!!\n");
                     break;
                 case CRUST_IAS_GETPUBKEY_FAILED:
                     p_log->err("Verify IAS report failed! Get public key from certificate failed!!\n");
