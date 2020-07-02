@@ -42,15 +42,14 @@ cd - &>/dev/null
 
 # Generate mrenclave file
 if [ x"$1" != x"debug" ]; then
-    if [ ! -d "$sgxsdkdir" ] || [ ! -d "$sgxssldir" ]; then
-        # Install dependencies
-        bash $basedir/install_deps.sh
-        if [ $? -ne 0 ]; then
-            verbose ERROR "Install dependencies failed!"
-            exit 1
-        fi
+    
+    # Install dependencies
+    bash $basedir/install_deps.sh
+    if [ $? -ne 0 ]; then
+        verbose ERROR "Install dependencies failed!"
+        exit 1
     fi
-
+    
     cd $appdir
     setTimeWait "$(verbose INFO "Building enclave.signed.so file..." h)" $SYNCFILE &
     toKillPID[${#toKillPID[*]}]=$!
