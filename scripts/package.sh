@@ -38,7 +38,7 @@ if [ ! -e "$instdir/bin" ] || [ ! -e "$instdir/resource" ]; then
     verbose INFO "Please provide the 'bin' and 'resource' required for installation"
     exit -1
 fi
-cd -
+cd - &>/dev/null
 
 # Generate mrenclave file
 if [ x"$1" != x"debug" ]; then
@@ -54,19 +54,19 @@ if [ x"$1" != x"debug" ]; then
     cd $appdir
     setTimeWait "$(verbose INFO "Building enclave.signed.so file..." h)" $SYNCFILE &
     toKillPID[${#toKillPID[*]}]=$!
-    make clean && make &>/dev/null
+    make clean && make -j8 &>/dev/null
     checkRes $? "quit" "$SYNCFILE"
     cp $enclavefile $instdir/etc
     make clean
-    cd -
+    cd - &>/dev/null
 else
     cd $appdir
     make clean
-    cd -
+    cd - &>/dev/null
 fi
 
 cd $instdir
-cp -r bin etc log src resource scripts $pkgdir
+cp -r bin etc src resource scripts $pkgdir
 cp LICENSE README.md VERSION buildenv.mk $pkgdir
 rm etc/$enclavefile
 cd -
