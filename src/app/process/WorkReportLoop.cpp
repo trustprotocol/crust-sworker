@@ -26,6 +26,7 @@ size_t get_random_wait_time(std::string seed)
  * */
 void report_order_realtime(size_t wait_time)
 {
+    crust_status_t crust_status = CRUST_SUCCESS;
     report_wait_time += wait_time;
 
     if (report_wait_time >= 9)
@@ -57,7 +58,6 @@ void *work_report_loop(void *)
     sgx_ec256_signature_t ecc_signature;
     crust_status_t crust_status = CRUST_SUCCESS;
     crust::Chain *p_chain = crust::Chain::get_instance();
-    int order_report_interval = 0;
 
     while (true)
     {
