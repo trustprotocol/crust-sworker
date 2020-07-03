@@ -3,6 +3,7 @@
 extern sgx_enclave_id_t global_eid;
 extern std::string g_order_report_str;
 crust::Log *p_log = crust::Log::get_instance();
+size_t report_wait_time = 0;
 
 /**
  * @description: used to generate random waiting time to ensure that the reporting workload is not concentrated
@@ -21,6 +22,33 @@ size_t get_random_wait_time(std::string seed)
 }
 
 /**
+ * @description: Report order to chain
+ * */
+void report_order_realtime(size_t wait_time)
+{
+    report_wait_time += wait_time;
+
+    if (report_wait_time >= 9)
+    {
+        // Will use ocall to set g_order_report_str
+        if(SGX_SUCCESS != Ecall_get_signed_order_report(global_eid, &crust_status)
+            || CRUST_SUCCESS != crust_status)
+        {
+            if (CRUST_REPORT_NO_ORDER_FILE != crust_status)
+            {
+                p_log->err("Get signed order report failed! Error code: %x\n", crust_status);
+            }
+        }
+        else
+        {
+            p_log->info("Order report:%s\n", g_order_report_str.c_str());
+        }
+        g_order_report_str = "";
+        report_wait_time = 0;
+    }
+}
+
+/**
  * @description: Check if there is enough height, send signed work report to chain
  * */
 void *work_report_loop(void *)
@@ -34,24 +62,7 @@ void *work_report_loop(void *)
     while (true)
     {
         // ----- Report order report ----- //
-        if (3 == order_report_interval)
-        {
-            if(SGX_SUCCESS != Ecall_get_signed_order_report(global_eid, &crust_status)
-                || CRUST_SUCCESS != crust_status)
-            {
-                if (CRUST_REPORT_NO_ORDER_FILE != crust_status)
-                {
-                    p_log->err("Get signed order report failed! Error code: %x\n", crust_status);
-                }
-            }
-            else
-            {
-                p_log->info("Get order report:%s\n", g_order_report_str.c_str());
-            }
-            g_order_report_str = "";
-            order_report_interval = 0;
-        }
-        order_report_interval++;
+        report_order_realtime(BLOCK_INTERVAL / 2);
 
         // ----- Report work report ----- //
         crust::BlockHeader *block_header = p_chain->get_block_header();
@@ -64,7 +75,12 @@ void *work_report_loop(void *)
         {
             size_t wait_time = get_random_wait_time(Config::get_instance()->chain_address);
             p_log->info("It is estimated that the workload will be reported at the %lu block\n", block_header->number + (wait_time / BLOCK_INTERVAL) + 1);
-            sleep(wait_time);
+            while(wait_time > 0)
+            {
+                report_order_realtime(1);
+                sleep(1);
+                wait_time--;
+            }
 
             // Get confirmed block hash
             block_header->hash = p_chain->get_block_hash(block_header->number);
