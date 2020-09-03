@@ -36,6 +36,7 @@ enclave {
 
         public void ecall_id_get_info();
         public void ecall_get_workload();
+        public void ecall_log_set_debug(int flag);
     };
 
     untrusted {

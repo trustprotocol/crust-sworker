@@ -585,6 +585,26 @@ sgx_status_t Ecall_confirm_file(sgx_enclave_id_t eid, crust_status_t *status, co
 }
 
 /**
+ * @description: Set encalve log debug
+ * @param status -> Pointer to confirm result status
+ * @param hash -> New file hash
+ */
+sgx_status_t Ecall_log_set_debug(sgx_enclave_id_t eid, int flag)
+{
+    sgx_status_t ret = SGX_SUCCESS;
+    if (SGX_SUCCESS != (ret = try_get_enclave(__FUNCTION__)))
+    {
+        return ret;
+    }
+
+    ret = ecall_log_set_debug(eid, flag);
+
+    free_enclave(__FUNCTION__);
+
+    return ret;
+}
+
+/**
  * @description: Delete file
  * @param status -> Pointer to delete result status
  * @param hash -> File root hash

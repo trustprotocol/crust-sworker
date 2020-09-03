@@ -87,6 +87,13 @@ bool initialize_enclave()
         return false;
     }
 
+    // ----- Set enclave logger ----- //
+    if (SGX_SUCCESS != Ecall_log_set_debug(global_eid, p_log->get_debug_flag()))
+    {
+        p_log->err("Set eclave logger failed!error code:%08x\n", ret);
+        return false;
+    }
+
     // ----- Generate code measurement ----- //
     if (SGX_SUCCESS != Ecall_gen_sgx_measurement(global_eid, &ret))
     {

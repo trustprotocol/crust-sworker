@@ -278,6 +278,7 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
             }
             bool debug_flag = req_json["debug"].ToBool();
             p_log->set_debug(debug_flag);
+            Ecall_log_set_debug(global_eid, debug_flag);
             ret_info = "Set debug flag successfully!";
             p_log->info("%s %s debug.\n", ret_info.c_str(), debug_flag ? "Open" : "Close");
             res.result(200);

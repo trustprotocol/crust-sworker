@@ -269,3 +269,15 @@ void ecall_get_workload()
 {
     Workload::get_instance()->get_workload();
 }
+
+/**
+ * @description: Set logger debug
+ */
+void ecall_log_set_debug(int flag)
+{
+    if (flag == 0) {
+        log_set_debug(false);
+    } else {
+        log_set_debug(true);
+    }    
+}
