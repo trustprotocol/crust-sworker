@@ -31,6 +31,7 @@ std::unordered_map<std::string, int> g_task_priority_um = {
     {"Ecall_srd_increase", 2},
     {"Ecall_id_get_info", 3},
     {"Ecall_get_workload", 3},
+    {"Ecall_log_set_debug", 3},
 };
 // Mapping of Enclave task to its block tasks, current task cannot run when there exists its block task
 std::unordered_map<std::string, std::unordered_set<std::string>> g_block_tasks_um = {
