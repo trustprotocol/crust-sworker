@@ -67,11 +67,6 @@ void ecall_main_loop()
         validate_meaningful_file();
         sched_del(SCHED_VALIDATE_FILE);
 
-        // ----- SRD validate ----- //
-        sched_add(SCHED_VALIDATE_SRD);
-        validate_srd();
-        sched_del(SCHED_VALIDATE_SRD);
-
         // ----- SRD ----- //
         sched_add(SCHED_SRD_CHANGE);
         srd_change();
@@ -85,8 +80,6 @@ void ecall_main_loop()
 
         // Add validated proof
         report_add_validated_proof();
-
-        ocall_usleep(MAIN_LOOP_WAIT_TIME);
     }
 }
 

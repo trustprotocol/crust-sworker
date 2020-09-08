@@ -94,12 +94,13 @@ crust_status_t persist_set(std::string key, const uint8_t *value, size_t value_l
     crust_status_t crust_status = CRUST_SUCCESS;
     sgx_sealed_data_t *p_sealed_data = NULL;
     size_t sealed_data_size = 0;
+    log_info("1.1\n");
     crust_status = seal_data_mrenclave(value, value_len, &p_sealed_data, &sealed_data_size);
     if (CRUST_SUCCESS != crust_status)
     {
         return crust_status;
     }
-
+    log_info("1.2\n");
     uint8_t *p_sealed_data_r = (uint8_t*)enc_malloc(sealed_data_size);
     if (p_sealed_data_r == NULL)
     {
@@ -109,9 +110,10 @@ crust_status_t persist_set(std::string key, const uint8_t *value, size_t value_l
     memset(p_sealed_data_r, 0, sealed_data_size);
     memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
     free(p_sealed_data);
-
+    log_info("1.3\n");
     ocall_persist_set(&crust_status, key.c_str(), p_sealed_data_r, sealed_data_size);
     free(p_sealed_data_r);
+    log_info("1.4\n");
 
     return crust_status;
 }

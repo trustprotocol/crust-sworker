@@ -210,7 +210,7 @@ size_t get_avail_space_under_dir_r(std::string path, uint32_t unit)
         return 0;
     }
     size_t avail_disk = (size_t)disk_info.f_bavail * (size_t)disk_info.f_bsize;
-    return avail_disk >> unit;
+    return 100000;
 }
 
 /**

@@ -914,6 +914,7 @@ crust_status_t id_store_metadata()
     meta_json[ID_REPORT_SLOG] = report_slot;
     meta_json[ID_CHAIN_ACCOUNT_ID] = g_chain_account_id;
     std::string meta_str = meta_json.dump();
+    log_info("Meta str size: %lu\n", meta_str.size());
     meta_len = meta_str.size() + strlen(TEE_PRIVATE_TAG);
     p_meta = (uint8_t*)enc_malloc(meta_len);
     if (p_meta == NULL)
@@ -921,10 +922,12 @@ crust_status_t id_store_metadata()
         crust_status = CRUST_MALLOC_FAILED;
         goto cleanup;
     }
+    log_info("1\n");
     memset(p_meta, 0, meta_len);
     memcpy(p_meta, TEE_PRIVATE_TAG, strlen(TEE_PRIVATE_TAG));
     memcpy(p_meta + strlen(TEE_PRIVATE_TAG), meta_str.c_str(), meta_str.size());
     crust_status = persist_set(ID_METADATA, p_meta, meta_len);
+    log_info("2\n");
     free(p_meta);
 
 

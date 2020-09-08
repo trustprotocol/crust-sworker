@@ -12,7 +12,7 @@
 #include "PathHelper.h"
 #include "Schedule.h"
 
-#define SRD_MAX_PER_TURN 64
+#define SRD_MAX_PER_TURN 10240
 
 void srd_change();
 void srd_increase(const char *path);

@@ -102,74 +102,11 @@ void srd_increase(const char *path)
         }
     } while (0);
 
-    // Generate current G hash index
-    size_t now_index = 0;
-    sgx_read_rand((unsigned char *)&now_index, 8);
-
-    // ----- Generate srd file ----- //
-    // Create directory
-    std::string g_path = get_g_path(path, now_index);
-    ocall_create_dir(&crust_status, g_path.c_str());
-
-    // Generate all M hashs and store file to disk
-    uint8_t *hashs = (uint8_t *)enc_malloc(SRD_RAND_DATA_NUM * HASH_LENGTH);
-    if (hashs == NULL)
-    {
-        log_err("Malloc memory failed!\n");
-        return;
-    }
-    for (size_t i = 0; i < SRD_RAND_DATA_NUM; i++)
-    {
-        crust_status = seal_data_mrenclave(g_base_rand_buffer, SRD_RAND_DATA_LENGTH, &p_sealed_data, &sealed_data_size);
-        if (CRUST_SUCCESS != crust_status)
-        {
-            return;
-        }
-
-        sgx_sha256_hash_t out_hash256;
-        sgx_sha256_msg((uint8_t *)p_sealed_data, SRD_RAND_DATA_LENGTH, &out_hash256);
-
-        for (size_t j = 0; j < HASH_LENGTH; j++)
-        {
-            hashs[i * HASH_LENGTH + j] = out_hash256[j];
-        }
-
-        save_file(g_path.c_str(), i, out_hash256, (unsigned char *)p_sealed_data, SRD_RAND_DATA_LENGTH);
-
-        free(p_sealed_data);
-        p_sealed_data = NULL;
-    }
-
-    // Generate G hashs
-    sgx_sha256_hash_t g_out_hash256;
-    sgx_sha256_msg(hashs, SRD_RAND_DATA_NUM * HASH_LENGTH, &g_out_hash256);
-
-    save_m_hashs_file(g_path.c_str(), hashs, SRD_RAND_DATA_NUM * HASH_LENGTH);
-    free(hashs);
-
-    // Change G path name
-    std::string new_g_path = get_g_path_with_hash(path, g_out_hash256);
-    ocall_rename_dir(&crust_status, g_path.c_str(), new_g_path.c_str());
-
-    // Get g hash
-    uint8_t *p_hash_u = (uint8_t *)enc_malloc(HASH_LENGTH);
-    if (p_hash_u == NULL)
-    {
-        log_info("Seal random data failed! Malloc memory failed!\n");
-        return;
-    }
-    memset(p_hash_u, 0, HASH_LENGTH);
-    memcpy(p_hash_u, g_out_hash256, HASH_LENGTH);
-
-    // ----- Update srd_path2hashs_m ----- //
-    std::string hex_g_hash = hexstring_safe(p_hash_u, HASH_LENGTH);
-    if (hex_g_hash.compare("") == 0)
-    {
-        log_err("Hexstring failed!\n");
-        return;
-    }
     // Add new g_hash to srd_path2hashs_m
     // Because add this p_hash_u to the srd_path2hashs_m, so we cannot free p_hash_u
+    uint8_t *p_hash_u = (uint8_t *)enc_malloc(32);
+    sgx_read_rand(p_hash_u, 32);
+
     sgx_thread_mutex_lock(&g_srd_mutex);
     wl->srd_path2hashs_m[path_str].push_back(p_hash_u);
     size_t srd_total_num = 0;
@@ -177,7 +114,7 @@ void srd_increase(const char *path)
     {
         srd_total_num += it.second.size();
     }
-    log_info("Seal random data -> %s, %luG success\n", hex_g_hash.c_str(), srd_total_num);
+    log_info("Seal random data %luG success\n", srd_total_num);
     sgx_thread_mutex_unlock(&g_srd_mutex);
 
     // ----- Update srd info ----- //
