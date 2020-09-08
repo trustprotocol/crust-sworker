@@ -6,6 +6,7 @@ sgx_thread_mutex_t g_srd_change_mutex = SGX_THREAD_MUTEX_INITIALIZER;
 uint8_t *g_base_rand_buffer = NULL;
 sgx_thread_mutex_t g_base_rand_buffer_mutex = SGX_THREAD_MUTEX_INITIALIZER;
 
+// TODO: store in DB with bytes
 /**
  * @description: call ocall_save_file to save file
  * @param g_path -> g folder path
@@ -321,12 +322,6 @@ size_t srd_decrease(long change, std::map<std::string, std::set<size_t>> *srd_de
         log_err("Delete punish g: set srd info failed! Error code:%lx\n", crust_status);
     }
     ocall_srd_info_unlock();
-
-    // Update workload in metadata
-    if (CRUST_SUCCESS != (crust_status = id_metadata_set_or_append(ID_WORKLOAD, wl->serialize_srd(false))))
-    {
-        log_err("Store metadata failed! Error code:%lx\n", crust_status);
-    }
 
     return change_num;
 }

@@ -22,18 +22,8 @@ crust_status_t persist_add(std::string key, const uint8_t *value, size_t value_l
         return crust_status;
     }
 
-    uint8_t *p_sealed_data_r = (uint8_t*)enc_malloc(sealed_data_size);
-    if (p_sealed_data_r == NULL)
-    {
-        log_err("Malloc memory failed!\n");
-        return CRUST_MALLOC_FAILED;
-    }
-    memset(p_sealed_data_r, 0, sealed_data_size);
-    memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
+    ocall_persist_add(&crust_status, key.c_str(), (uint8_t *)p_sealed_data, sealed_data_size);
     free(p_sealed_data);
-
-    ocall_persist_add(&crust_status, key.c_str(), p_sealed_data_r, sealed_data_size);
-    free(p_sealed_data_r);
 
     return crust_status;
 }
@@ -100,18 +90,8 @@ crust_status_t persist_set(std::string key, const uint8_t *value, size_t value_l
         return crust_status;
     }
 
-    uint8_t *p_sealed_data_r = (uint8_t*)enc_malloc(sealed_data_size);
-    if (p_sealed_data_r == NULL)
-    {
-        log_err("Malloc memory failed!\n");
-        return CRUST_MALLOC_FAILED;
-    }
-    memset(p_sealed_data_r, 0, sealed_data_size);
-    memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
+    ocall_persist_set(&crust_status, key.c_str(), (uint8_t *)p_sealed_data, sealed_data_size);
     free(p_sealed_data);
-
-    ocall_persist_set(&crust_status, key.c_str(), p_sealed_data_r, sealed_data_size);
-    free(p_sealed_data_r);
 
     return crust_status;
 }

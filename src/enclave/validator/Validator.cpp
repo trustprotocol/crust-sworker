@@ -421,24 +421,13 @@ void validate_meaningful_file()
     // Change file status
     if (changed_idx2lost_um.size() > 0)
     {
-        sgx_thread_mutex_lock(&g_metadata_mutex);
-        json::JSON metadata_json;
-        id_get_metadata(metadata_json, false);
-        json::JSON meaningful_files_json = metadata_json[ID_FILE];
         for (auto it : changed_idx2lost_um)
         {
-            if ((int)it.first < meaningful_files_json.size())
-            {
-                std::string org_status = meaningful_files_json[it.first][FILE_STATUS].ToString();
-                meaningful_files_json[it.first][FILE_STATUS] = it.second ? FILE_STATUS_LOST : FILE_STATUS_VALID;
-                log_info("File status changed, hash: %s status: %s -> %s\n",
-                        meaningful_files_json[it.first][FILE_HASH].ToString().c_str(),
-                        org_status.c_str(),
-                        meaningful_files_json[it.first][FILE_STATUS].ToString().c_str());
-            }
+            log_info("File status changed, hash: %s status: %s -> %s\n",
+                    wl->checked_files[it.first][FILE_HASH].ToString().c_str(),
+                    it.second ? FILE_STATUS_LOST : FILE_STATUS_VALID,
+                    wl->checked_files[it.first][FILE_STATUS].ToString().c_str());
         }
-        id_metadata_set_or_append(ID_FILE, meaningful_files_json, ID_UPDATE, false);
-        sgx_thread_mutex_unlock(&g_metadata_mutex);
     }
 
     ocall_validate_close();

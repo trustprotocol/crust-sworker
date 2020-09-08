@@ -187,7 +187,7 @@ crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, uint64_t 
  * @param locked -> Indicates whether to get lock, default value is true
  * @return: Serialized workload
  */
-json::JSON Workload::serialize_srd(bool locked /*=true*/)
+std::string Workload::serialize_srd(bool locked /*=true*/)
 {
     if (locked)
     {
@@ -195,22 +195,68 @@ json::JSON Workload::serialize_srd(bool locked /*=true*/)
     }
 
     // Store srd_path2hashs_m
-    json::JSON g_hashs_json;
-    for (auto it : this->srd_path2hashs_m)
+    std::string ans;
+
+    size_t i = 0;
+    ans.append("{");
+    for (auto it = this->srd_path2hashs_m.begin(); it != this->srd_path2hashs_m.end(); it++, i++)
     {
-        int i = 0;
-        for (auto g_hash : it.second)
+        ans.append("\"").append(it->first).append("\":[");
+        for (size_t j = 0; j < it->second.size(); j++)
         {
-            g_hashs_json[it.first][i++] = hexstring_safe(g_hash, HASH_LENGTH);
+            ans.append("\"").append(hexstring_safe(it->second[j], HASH_LENGTH)).append("\"");
+            if (j != it->second.size() - 1)
+            {
+                ans.append(",");
+            }
+        }
+        ans.append("]");
+        if (i != this->srd_path2hashs_m.size() - 1)
+        {
+            ans.append(",");
         }
     }
+    ans.append("}");
 
     if (locked)
     {
         sgx_thread_mutex_unlock(&g_srd_mutex);
     }
 
-    return g_hashs_json;
+    return ans;
+}
+
+/**
+ * @description: Serialize file for sealing
+ * @param locked -> Indicates whether to get lock, default value is true
+ * @return: Serialized file info
+ */
+std::string Workload::serialize_file(bool locked /*=true*/)
+{
+    if (locked)
+    {
+        sgx_thread_mutex_lock(&g_checked_files_mutex);
+    }
+
+    std::string ans;
+
+    ans.append("[");
+    for (size_t i = 0; i < this->checked_files.size(); i++)
+    {
+        ans.append(this->checked_files[i].dump());
+        if (i != this->checked_files.size() - 1)
+        {
+            ans.append(",");
+        }
+    }
+    ans.append("]");
+
+    if (locked)
+    {
+        sgx_thread_mutex_unlock(&g_checked_files_mutex);
+    }
+
+    return ans;
 }
 
 /**

@@ -10,7 +10,7 @@
 #define ID_FILE "files"
 #define ID_WORKLOAD "workload"
 #define ID_KEY_PAIR "id_key_pair"
-#define ID_REPORT_SLOG "report_slot"
+#define ID_REPORT_SLOT "report_slot"
 #define ID_CHAIN_ACCOUNT_ID "chain_account_id"
 
 // For meaningful file
