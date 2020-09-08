@@ -71,4 +71,7 @@
 #define ENC_MAX_THREAD_NUM  15
 #define ENCLAVE_MALLOC_TRYOUT 3
 
+// For buffer pool
+#define BUFFER_AVAILABLE "buffer_available"
+
 #endif /* !_ENCLAVE_RESOURCE_H_ */

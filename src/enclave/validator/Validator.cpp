@@ -141,7 +141,7 @@ void validate_srd()
 
         // Get g_hash corresponding path
         hex_g_hash = hexstring_safe(p_g_hash, HASH_LENGTH);
-        g_path = std::string(dir_path).append("/").append(unsigned_char_array_to_hex_string(p_g_hash, HASH_LENGTH));
+        g_path = std::string(dir_path).append("/").append(hexstring_safe(p_g_hash, HASH_LENGTH));
 
         // Get M hashs
         ocall_get_file(&crust_status, get_m_hashs_file_path(g_path.c_str()).c_str(), &m_hashs_org, &m_hashs_size);
@@ -152,7 +152,7 @@ void validate_srd()
             goto nextloop;
         }
 
-        m_hashs = (uint8_t*)enc_malloc(m_hashs_size);
+        m_hashs = (uint8_t *)enc_malloc(m_hashs_size);
         if (m_hashs == NULL)
         {
             log_err("Malloc memory failed!\n");
@@ -179,7 +179,7 @@ void validate_srd()
 
         if (leaf_data == NULL)
         {
-            log_err("Get leaf file failed in '%s'.\n", unsigned_char_array_to_hex_string(p_g_hash, HASH_LENGTH).c_str());
+            log_err("Get leaf file failed in '%s'.\n", hexstring_safe(p_g_hash, HASH_LENGTH).c_str());
             del_path2idx_m[dir_path].insert(srd_idx.second);
             goto nextloop;
         }
@@ -305,7 +305,7 @@ void validate_meaningful_file()
         size_t file_block_num = wl->checked_files[file_idx][FILE_BLOCK_NUM].ToInt();
         // Get tree string
         crust_status = persist_get_unsafe(root_hash, &p_data, &data_len);
-        if (CRUST_SUCCESS != crust_status || 0 == data_len)
+        if (CRUST_SUCCESS != crust_status || p_data == NULL)
         {
             //log_err("Validate meaningful data failed! Get tree:%s failed!\n", root_hash.c_str());
             if (wl->checked_files[file_idx][FILE_STATUS].ToString().compare(FILE_STATUS_VALID) == 0)

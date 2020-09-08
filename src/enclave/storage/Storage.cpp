@@ -175,6 +175,11 @@ crust_status_t _storage_seal_file(json::JSON &tree_json, string path, string &tr
         memcpy(file_data_r, file_data, file_data_len);
         sgx_sha256_msg(file_data_r, file_data_len, &got_org_hash);
         p_org_hash = hex_string_to_bytes(old_hash_str.c_str(), old_hash_str.size());
+        if (p_org_hash == NULL)
+        {
+            crust_status = CRUST_MALLOC_FAILED;
+            goto sealend;
+        }
         if (memcmp(p_org_hash, &got_org_hash, HASH_LENGTH) != 0)
         {
             crust_status = CRUST_STORAGE_UNEXPECTED_FILE_BLOCK;

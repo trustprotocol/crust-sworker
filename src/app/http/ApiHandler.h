@@ -584,6 +584,11 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
                 sealed_tree_map.unsafe_erase(org_root_hash_str);
             }
 
+            if (p_new_path != NULL)
+            {
+                free(p_new_path);
+            }
+
             goto postcleanup;
         }
 

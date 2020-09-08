@@ -381,7 +381,7 @@ crust_status_t id_verify_iasreport(char **IASReport, size_t size)
     uint8_t *p_account_id_u = hex_string_to_bytes(chain_account_id.c_str(), chain_account_id.size());
     size_t account_id_u_len = chain_account_id.size() / 2;
     uint8_t *org_data, *p_org_data = NULL;
-    size_t org_data_len = 0;
+    uint32_t org_data_len = 0;
 
 
     // ----- Verify IAS signature ----- //
@@ -602,22 +602,26 @@ crust_status_t id_verify_iasreport(char **IASReport, size_t size)
 
 cleanup:
     if (pkey != NULL)
-    {
         EVP_PKEY_free(pkey);
-    }
+
     cert_stack_free(stack);
-    free(certar);
+
+    if (certar != NULL)
+        free(certar);
+
     for (i = 0; i < count; ++i)
     {
         X509_free(certvec[i]);
     }
 
-    free(sig);
-    free(iasQuote);
+    if (sig != NULL)
+        free(sig);
+
+    if (iasQuote != NULL)
+        free(iasQuote);
+
     if (ecc_state != NULL)
-    {
         sgx_ecc256_close_context(ecc_state);
-    }
 
     if (p_org_data != NULL)
         free(p_org_data);
@@ -921,12 +925,10 @@ crust_status_t id_store_metadata()
     memcpy(p_meta, TEE_PRIVATE_TAG, strlen(TEE_PRIVATE_TAG));
     memcpy(p_meta + strlen(TEE_PRIVATE_TAG), meta_str.c_str(), meta_str.size());
     crust_status = persist_set(ID_METADATA, p_meta, meta_len);
+    free(p_meta);
 
 
 cleanup:
-
-    if (p_meta != NULL)
-        free(p_meta);
 
     sgx_thread_mutex_unlock(&g_metadata_mutex);
 
@@ -1044,14 +1046,12 @@ crust_status_t id_set_chain_account_id(const char *account_id, size_t len)
         return CRUST_DOUBLE_SET_VALUE;
     }
 
-    char *buffer = (char *)enc_malloc(len);
-    if (buffer == NULL)
+    if (account_id == NULL)
     {
-        return CRUST_MALLOC_FAILED;
+        return CRUST_UNEXPECTED_ERROR;
     }
-    memset(buffer, 0, len);
-    memcpy(buffer, account_id, len);
-    g_chain_account_id = string(buffer, len);
+
+    g_chain_account_id = string(account_id, len);
     g_is_set_account_id = true;
 
     return CRUST_SUCCESS;

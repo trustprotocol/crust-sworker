@@ -59,7 +59,7 @@ std::string Workload::get_workload(void)
 {
     crust_status_t crust_status = CRUST_SUCCESS;
     sgx_sha256_hash_t srd_root;
-    size_t srd_workload = 0;
+    uint64_t srd_workload = 0;
     json::JSON wl_json;
     json::JSON md_json;
     memset(srd_root, 0, sizeof(sgx_sha256_hash_t));
@@ -126,7 +126,7 @@ void Workload::clean_data()
  * @param srd_workload_out -> srd workload
  * @return: Get status
  */
-crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, size_t *srd_workload_out, json::JSON &md_json)
+crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, uint64_t *srd_workload_out, json::JSON &md_json)
 {
     if (! md_json.hasKey(ID_WORKLOAD) 
             || md_json[ID_WORKLOAD].JSONType() != json::JSON::Class::Object)
@@ -134,19 +134,19 @@ crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, size_t *s
         return CRUST_SUCCESS;
     }
     // Get hashs for hashing
-    size_t g_hashs_num = 0;
+    uint64_t g_hashs_num = 0;
     for (auto it = md_json[ID_WORKLOAD].ObjectRange().begin();
             it != md_json[ID_WORKLOAD].ObjectRange().end(); it++)
     {
         g_hashs_num += it->second.size();
     }
-    unsigned char *hashs = (unsigned char *)enc_malloc(g_hashs_num * HASH_LENGTH);
+    uint8_t *hashs = (uint8_t *)enc_malloc(g_hashs_num * HASH_LENGTH);
     if (hashs == NULL)
     {
         log_err("Malloc memory failed!\n");
         return CRUST_MALLOC_FAILED;
     }
-    size_t hashs_len = 0;
+    uint64_t hashs_len = 0;
 
     for (auto it = md_json[ID_WORKLOAD].ObjectRange().begin();
             it != md_json[ID_WORKLOAD].ObjectRange().end(); it++)
@@ -155,6 +155,11 @@ crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, size_t *s
         {
             std::string hash_str = it->second[i].ToString();
             uint8_t *hash_u = hex_string_to_bytes(hash_str.c_str(), hash_str.size());
+            if (hash_u == NULL)
+            {
+                free(hashs);
+                return CRUST_MALLOC_FAILED;
+            }
             memcpy(hashs + hashs_len, hash_u, HASH_LENGTH);
             hashs_len += HASH_LENGTH;
         }
@@ -169,7 +174,7 @@ crust_status_t Workload::get_srd_info(sgx_sha256_hash_t *srd_root_out, size_t *s
     else
     {
         *srd_workload_out = (hashs_len / HASH_LENGTH) * 1024 * 1024 * 1024;
-        sgx_sha256_msg(hashs, (uint32_t)hashs_len, srd_root_out);
+        sgx_sha256_msg(hashs, hashs_len, srd_root_out);
     }
 
     free(hashs);

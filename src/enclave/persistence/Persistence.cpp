@@ -161,6 +161,7 @@ crust_status_t persist_get(std::string key, uint8_t **value, size_t *value_len)
     }
     memset(p_sealed_data_r, 0, sealed_data_size);
     memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
+    memcpy(p_sealed_data, BUFFER_AVAILABLE, strlen(BUFFER_AVAILABLE));
     uint32_t unsealed_data_size = sgx_get_encrypt_txt_len(p_sealed_data_r);
     uint8_t *p_unsealed_data = (uint8_t*)enc_malloc(unsealed_data_size);
     if (p_unsealed_data == NULL)
@@ -215,6 +216,7 @@ crust_status_t persist_get_unsafe(std::string key, uint8_t **value, size_t *valu
     }
     memset(p_data, 0, data_len);
     memcpy(p_data, data, data_len);
+    memcpy(data, BUFFER_AVAILABLE, strlen(BUFFER_AVAILABLE));
 
     *value = p_data;
     *value_len = data_len;

@@ -112,7 +112,7 @@ void srd_increase(const char *path)
     ocall_create_dir(&crust_status, g_path.c_str());
 
     // Generate all M hashs and store file to disk
-    unsigned char *hashs = (unsigned char*)enc_malloc(SRD_RAND_DATA_NUM * HASH_LENGTH);
+    uint8_t *hashs = (uint8_t *)enc_malloc(SRD_RAND_DATA_NUM * HASH_LENGTH);
     if (hashs == NULL)
     {
         log_err("Malloc memory failed!\n");
@@ -127,7 +127,7 @@ void srd_increase(const char *path)
         }
 
         sgx_sha256_hash_t out_hash256;
-        sgx_sha256_msg((unsigned char *)p_sealed_data, SRD_RAND_DATA_LENGTH, &out_hash256);
+        sgx_sha256_msg((uint8_t *)p_sealed_data, SRD_RAND_DATA_LENGTH, &out_hash256);
 
         for (size_t j = 0; j < HASH_LENGTH; j++)
         {
@@ -145,7 +145,7 @@ void srd_increase(const char *path)
     sgx_sha256_msg(hashs, SRD_RAND_DATA_NUM * HASH_LENGTH, &g_out_hash256);
 
     save_m_hashs_file(g_path.c_str(), hashs, SRD_RAND_DATA_NUM * HASH_LENGTH);
-    delete[] hashs;
+    free(hashs);
 
     // Change G path name
     std::string new_g_path = get_g_path_with_hash(path, g_out_hash256);
@@ -194,6 +194,10 @@ void srd_increase(const char *path)
     if (CRUST_SUCCESS != (crust_status = persist_set_unsafe(DB_SRD_INFO, reinterpret_cast<const uint8_t *>(srd_info_str.c_str()), srd_info_str.size())))
     {
         log_warn("Set srd info failed! Error code:%lx\n", crust_status);
+    }
+    if (p_srd_info != NULL)
+    {
+        free(p_srd_info);
     }
     ocall_srd_info_unlock();
 }
@@ -280,6 +284,10 @@ size_t srd_decrease(long change, std::map<std::string, std::set<size_t>> *srd_de
         log_err("Get srd info failed!\n");
     }
     json::JSON srd_info_json = json::JSON::Load(std::string(reinterpret_cast<char*>(p_srd_info), srd_info_len));
+    if (p_srd_info != NULL)
+    {
+        free(p_srd_info);
+    }
     // Do delete
     for (auto path_2_hash : del_path2hashs_m)
     {
