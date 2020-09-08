@@ -110,10 +110,11 @@ crust_status_t persist_set(std::string key, const uint8_t *value, size_t value_l
     memset(p_sealed_data_r, 0, sealed_data_size);
     memcpy(p_sealed_data_r, p_sealed_data, sealed_data_size);
     free(p_sealed_data);
-    log_info("1.3\n");
+    log_info("1.3: %lu\n", sealed_data_size);
     ocall_persist_set(&crust_status, key.c_str(), p_sealed_data_r, sealed_data_size);
-    free(p_sealed_data_r);
     log_info("1.4\n");
+    free(p_sealed_data_r);
+    log_info("1.5\n");
 
     return crust_status;
 }

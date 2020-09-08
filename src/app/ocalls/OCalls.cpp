@@ -473,6 +473,7 @@ crust_status_t ocall_persist_del_keys(const char *key, const char *keys, size_t 
  */
 crust_status_t ocall_persist_set(const char *key, const uint8_t *value, size_t value_len)
 {
+    p_log->info("db set size: %lu\n", value_len);
     return crust::DataBase::get_instance()->set(std::string(key), std::string((const char*)value, value_len));
 }
 
