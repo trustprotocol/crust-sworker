@@ -691,11 +691,21 @@ void ocall_store_enclave_id_info(const char *info)
 
 /**
  * @description: Store enclave workload
- * @param wl -> Workload information
+ * @param data -> Workload information
+ * @param data_size -> Workload size
  */
-void ocall_store_workload(const char *wl)
+void ocall_store_workload(const char *data, size_t data_size, bool flag /*=true*/)
 {
-    set_g_enclave_workload(wl);
+    if (flag)
+    {
+        set_g_enclave_workload(std::string(data, data_size));
+    }
+    else
+    {
+        std::string str = get_g_enclave_workload();
+        str.append(data, data_size);
+        set_g_enclave_workload(str);
+    }
 }
 
 /**

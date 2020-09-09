@@ -98,7 +98,7 @@ std::string Workload::get_workload(void)
 
     // Store workload
     std::string wl_str = wl_json.dump();
-    ocall_store_workload(wl_str.c_str());
+    store_large_data(wl_str.c_str(), wl_str.size(), ocall_store_workload);
 
     return wl_str;
 }

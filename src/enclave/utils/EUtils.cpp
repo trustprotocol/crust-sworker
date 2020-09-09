@@ -724,3 +724,29 @@ void replace(std::string &data, std::string org_str, std::string det_str)
         epos = spos + det_str.size();
     }
 }
+
+/**
+ * @description: Store large data
+ * @param data -> To be stored data
+ * @param p_func -> Store function
+ */
+void store_large_data(const char *data, size_t data_size, p_ocall_store p_func)
+{
+    if (data_size > OCALL_STORE_THRESHOLD)
+    {
+        size_t offset = 0;
+        size_t part_size = 0;
+        bool flag = true;
+        while (data_size > offset)
+        {
+            part_size = std::min(data_size - offset, (size_t)OCALL_STORE_THRESHOLD);
+            p_func(data + offset, part_size, flag);
+            offset += part_size;
+            flag = false;
+        }
+    }
+    else
+    {
+        p_func(data, data_size, true);
+    }
+}
