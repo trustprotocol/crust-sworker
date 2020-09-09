@@ -5,6 +5,9 @@
 
 #define LEAF_SEPARATOR  "+leaf+"
 
+// For persistence
+#define OCALL_STORE_THRESHOLD 4194304 /* 4*1024*1024 */
+
 // For enclave metadata
 #define ID_METADATA "metadata"
 #define ID_FILE "files"
@@ -65,6 +68,10 @@
 #define WL_FILE_STATUS "status"
 #define WL_FILE_OLD_HASH "old_hash"
 #define WL_FILE_OLD_SIZE "old_size"
+
+// For ocalls
+#define PERSIST_SUM "persist_sum"
+#define PERSIST_SIZE "persist_size"
 
 // Basic parameters
 #define HASH_LENGTH 32
