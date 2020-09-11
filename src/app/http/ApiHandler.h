@@ -228,6 +228,19 @@ void ApiHandler::http_handler(beast::string_view /*doc_root*/,
             goto getcleanup;
         }
 
+        cur_path = urlendpoint->base + "/test/memory";
+        if (path.compare(cur_path) == 0)
+        {
+            int memory = 0;
+            sgx_status_t sgx_status = Ecall_test_memory(global_eid, &memory);
+            if (SGX_SUCCESS != sgx_status)
+            {
+                p_log->warn("Test memory failed! Error code:%lx\n", sgx_status);
+            }
+            res.body() = std::to_string(memory);
+            goto getcleanup;
+        }
+
         // ----- Get enclave id information ----- //
         cur_path = urlendpoint->base + "/enclave/id_info";
         if (path.compare(cur_path) == 0)

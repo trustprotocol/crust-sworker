@@ -269,3 +269,19 @@ void ecall_get_workload()
 {
     Workload::get_instance()->get_workload();
 }
+
+int ecall_test_memory()
+{
+    for (size_t i = 0; i < 500; i++)
+    {
+        uint8_t *data = (uint8_t *)enc_malloc((500 - i)*1024*1024);
+        if (data != NULL)
+        {
+            free(data);
+            log_info("%dM memory left\n", 500 - i);
+            return 500 - i;
+        }
+    }
+    
+    return 0;
+}

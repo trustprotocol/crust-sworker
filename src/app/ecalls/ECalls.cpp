@@ -31,6 +31,7 @@ std::unordered_map<std::string, int> g_task_priority_um = {
     {"Ecall_srd_increase", 2},
     {"Ecall_id_get_info", 3},
     {"Ecall_get_workload", 3},
+    {"Ecall_test_memory", 3},
 };
 // Mapping of Enclave task to its block tasks, current task cannot run when there exists its block task
 std::unordered_map<std::string, std::unordered_set<std::string>> g_block_tasks_um = {
@@ -634,6 +635,21 @@ sgx_status_t Ecall_get_workload(sgx_enclave_id_t eid)
     }
 
     ret = ecall_get_workload(eid);
+
+    free_enclave(__FUNCTION__);
+
+    return ret;
+}
+
+sgx_status_t Ecall_test_memory(sgx_enclave_id_t eid, int* left_memory)
+{
+    sgx_status_t ret = SGX_SUCCESS;
+    if (SGX_SUCCESS != (ret = try_get_enclave(__FUNCTION__)))
+    {
+        return ret;
+    }
+
+    ret = ecall_test_memory(eid, left_memory);
 
     free_enclave(__FUNCTION__);
 
