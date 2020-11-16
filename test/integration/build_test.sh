@@ -476,7 +476,7 @@ sgx_status_t Ecall_clean_file(sgx_enclave_id_t eid);
 sgx_status_t Ecall_get_file_info(sgx_enclave_id_t eid, crust_status_t *status, const char *data);
 EOF
 
-    local pos=$(sed -n '/std::string show_enclave_thread_info();/=' $ecalls_h)
+    local pos=$(sed -n '/sgx_status_t Ecall_get_workload(sgx_enclave_id_t eid);/=' $ecalls_h)
     sed -i "$((pos+1)) r $TMPFILE" $ecalls_h
 }
 
