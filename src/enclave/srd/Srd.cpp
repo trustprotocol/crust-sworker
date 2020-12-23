@@ -184,27 +184,22 @@ void srd_increase(const char *path)
     memset(p_hash_u, 0, HASH_LENGTH);
     memcpy(p_hash_u, g_out_hash256, HASH_LENGTH);
 
-    // ----- Update srd_path2hashs_m ----- //
+    // ----- Update srd_hashs ----- //
     std::string hex_g_hash = hexstring_safe(p_hash_u, HASH_LENGTH);
     if (hex_g_hash.compare("") == 0)
     {
         log_err("Hexstring failed!\n");
         return;
     }
-    // Add new g_hash to srd_path2hashs_m
-    // Because add this p_hash_u to the srd_path2hashs_m, so we cannot free p_hash_u
+    // Add new g_hash to srd_hashs
+    // Because add this p_hash_u to the srd_hashs, so we cannot free p_hash_u
     sgx_thread_mutex_lock(&wl->srd_mutex);
-    wl->srd_path2hashs_m[path_str].push_back(p_hash_u);
-    size_t srd_total_num = 0;
-    for (auto it : wl->srd_path2hashs_m)
-    {
-        srd_total_num += it.second.size();
-    }
-    log_info("Seal random data -> %s, %luG success\n", hex_g_hash.c_str(), srd_total_num);
+    wl->srd_hashs.push_back(p_hash_u);
+    log_info("Seal random data -> %s, %luG success\n", hex_g_hash.c_str(), wl->srd_hashs.size());
     sgx_thread_mutex_unlock(&wl->srd_mutex);
 
     // ----- Update srd info ----- //
-    wl->set_srd_info(path_str, 1);
+    wl->set_srd_info(1);
 }
 
 /**
@@ -223,74 +218,49 @@ size_t srd_decrease(long change)
     SafeLock sl(wl->srd_mutex);
     sl.lock();
     wl->deal_deleted_srd(false);
-    // Set delete set
-    for (auto it : wl->srd_path2hashs_m)
-    {
-        srd_total_num += it.second.size();
-    }
-    change = std::min(change, (long)srd_total_num);
+    
+    // Get real change
+    change = std::min(change, (long)wl->srd_hashs.size());
     if (change == 0)
     {
         return 0;
     }
-    // Sort path by srd number
-    std::unordered_map<std::string, std::vector<uint8_t *>> srd_del_path2hashs_um;
-    std::vector<std::pair<std::string, uint32_t>> ordered_srd_path2hashs_v;
-    for (auto path2hashs: wl->srd_path2hashs_m)
+
+    // Get change set
+    std::vector<uint8_t *> srd_del_hashs;
+    for (size_t i = wl->srd_hashs.size() - 1; i >= 0; i--)
     {
-        ordered_srd_path2hashs_v.push_back(std::make_pair(path2hashs.first, path2hashs.second.size()));
+        wl->add_srd_to_deleted_buffer(i);
+        uint8_t *tmp = (uint8_t *)enc_malloc(HASH_LENGTH);
+        if (tmp == NULL)
+        {
+            log_info("Malloc memory failed!\n");
+            for (size_t j = 0; j < srd_del_hashs.size(); j++)
+            {
+                free(srd_del_hashs[j]);
+            }
+            srd_del_hashs.clear();
+            return 0;
+        }
+        memset(tmp, 0, HASH_LENGTH);
+        memcpy(tmp, wl->srd_hashs[i], HASH_LENGTH);
+        srd_del_hashs.push_back(tmp);
     }
-    std::sort(ordered_srd_path2hashs_v.begin(), ordered_srd_path2hashs_v.end(), 
-        [](std::pair<std::string, uint32_t> &v1, std::pair<std::string, uint32_t> &v2)
-        {
-            return v1.second < v2.second;
-        }
-    );
-    // Do delete
-    size_t disk_num = wl->srd_path2hashs_m.size();
-    for (auto it = ordered_srd_path2hashs_v.begin(); 
-            it != ordered_srd_path2hashs_v.end() && change > 0 && disk_num > 0; it++, disk_num--)
-    {
-        std::string path = it->first;
-        size_t del_num = change / disk_num;
-        if ((double)change / (double)disk_num - (double)del_num > 0)
-        {
-            del_num++;
-        }
-        if (wl->srd_path2hashs_m[path].size() <= del_num)
-        {
-            del_num = wl->srd_path2hashs_m[path].size();
-        }
-        auto sit = wl->srd_path2hashs_m[path].begin();
-        auto eit = sit + del_num;
-        srd_del_path2hashs_um[path].insert(srd_del_path2hashs_um[path].end(), sit, eit);
-        // Delete related srd from meta
-        wl->srd_path2hashs_m[path].erase(sit, eit);
-        // Delete related path if there is no srd
-        if (wl->srd_path2hashs_m[path].size() == 0)
-        {
-            wl->srd_path2hashs_m.erase(path);
-        }
-        change -= del_num;
-        real_change += del_num;
-        wl->set_srd_info(path, -del_num);
-    }
+
+    // Delete metadata
+    wl->deal_deleted_srd(false);
     sl.unlock();
 
-    // ----- Delete corresponding items ----- //
-    // Do delete
-    for (auto path2hashs : srd_del_path2hashs_um)
+    // Delete srd files
+    for (auto del_hash : srd_del_hashs)
     {
-        std::string del_dir = path2hashs.first;
-        for (auto del_hash : path2hashs.second)
+        // --- Delete srd file --- //
+        // TODO : hard code
+        std::string del_path = "/opt/crust/crust-sworker/0.7.0/sworker_base_path/data/srd" + hexstring_safe(del_hash, HASH_LENGTH);
+        ocall_delete_folder_or_file(&crust_status, del_path.c_str());
+        if (CRUST_SUCCESS != crust_status)
         {
-            // --- Delete srd file --- //
-            std::string del_path = path2hashs.first + "/" + hexstring_safe(del_hash, HASH_LENGTH);
-            ocall_delete_folder_or_file(&crust_status, del_path.c_str());
-            if (CRUST_SUCCESS != crust_status)
-            {
-                log_warn("Delete path:%s failed! Error code:%lx\n", del_path.c_str(), crust_status);
-            }
+            log_warn("Delete path:%s failed! Error code:%lx\n", del_path.c_str(), crust_status);
         }
     }
 

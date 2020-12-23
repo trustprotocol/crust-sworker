@@ -47,7 +47,7 @@ crust_status_t ecall_change_srd_task(long change, long *real_change)
 }
 
 /**
- * @description: Update srd_path2hashs_m
+ * @description: Update srd_metadata
  * @param hashs (in) -> Pointer to the address of to be deleted hashs array
  * @param hashs_len -> Hashs array length
  */

@@ -24,18 +24,18 @@ json::JSON get_increase_srd_info(size_t &true_srd_capacity)
     if (create_directory(p_config->srd_path))
     {
         // Calculate free disk
-        disk_info_json[p_config->srd_path]["available"] = get_avail_space_under_dir_g(p_config->srd_path);
-        disk_info_json[p_config->srd_path]["total"] = get_total_space_under_dir_g(p_config->srd_path);
-        if (disk_info_json[p_config->srd_path]["available"].ToInt() <= srd_reserved_space)
+        disk_info_json["available"] = get_avail_space_under_dir_g(p_config->srd_path);
+        disk_info_json["total"] = get_total_space_under_dir_g(p_config->srd_path);
+        if (disk_info_json["available"].ToInt() <= srd_reserved_space)
         {
-            disk_info_json[p_config->srd_path]["available"] = 0;
+            disk_info_json["available"] = 0;
         }
         else
         {
-            disk_info_json[p_config->srd_path]["available"] = disk_info_json[p_config->srd_path]["available"].ToInt() - srd_reserved_space;
+            disk_info_json["available"] = disk_info_json["available"].ToInt() - srd_reserved_space;
         }
-        true_srd_capacity = std::min((size_t)disk_info_json[p_config->srd_path]["available"].ToInt(), true_srd_capacity);
-        disk_info_json[p_config->srd_path]["increased"] = true_srd_capacity;
+        true_srd_capacity = std::min((size_t)disk_info_jso["available"].ToInt(), true_srd_capacity);
+        disk_info_json["increased"] = true_srd_capacity;
     }
     else
     {
@@ -134,39 +134,20 @@ void srd_change(long change)
             return;
         }
         // Print disk info
-        auto disk_range = disk_info_json.ObjectRange();
-        for (auto it = disk_range.begin(); it != disk_range.end(); it++)
-        {
-            p_log->info("Available space is %ldG disk in '%s', will use %ldG space\n", 
-                    it->second["available"].ToInt(),
-                    it->first.c_str(),
-                    it->second["increased"].ToInt());
-        }
+        p_log->info("Available space is %ldG in '%s' folder, this turn will use %ldG space\n", 
+                disk_info_json["available"].ToInt(),
+                p_config->srd_path.c_str(),
+                disk_info_json["increased"].ToInt());
         p_log->info("Start sealing %luG srd files (thread number: %d) ...\n", 
                 true_increase, p_config->srd_thread_num);
-        size_t increase_acc = true_increase;
-        std::vector<std::string> srd_paths;
-        for (auto it = disk_range.begin(); increase_acc > 0; )
-        {
-            if (it->second["increased"].ToInt() > 0)
-            {
-                srd_paths.push_back(it->first);
-                it->second["increased"] = it->second["increased"].ToInt() - 1;
-                increase_acc--;
-            }
-            if (++it == disk_range.end())
-            {
-                it = disk_range.begin();
-            }
-        }
 
         // ----- Do srd ----- //
         // Use omp parallel to seal srd disk, the number of threads is equal to the number of CPU cores
         ctpl::thread_pool pool(p_config->srd_thread_num);
         std::vector<std::shared_ptr<std::future<sgx_status_t>>> tasks_v;
-        for (size_t i = 0; i < srd_paths.size(); i++)
+        for (size_t i = 0; i < true_increase; i++)
         {
-            std::string path = srd_paths[i];
+            std::string path = p_config->srd_path;
             sgx_enclave_id_t eid = global_eid;
             //tasks_v.push_back(std::make_shared<std::future<void>>(std::async(std::launch::async, [eid, path](){
             tasks_v.push_back(std::make_shared<std::future<sgx_status_t>>(pool.push([eid, path](int /*id*/){

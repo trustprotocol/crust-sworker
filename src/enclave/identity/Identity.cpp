@@ -724,16 +724,9 @@ size_t id_get_metadata_title_size()
  * @param srd_path2hashs_m -> Reference to srd metedata
  * @return: Buffer size
  */
-size_t id_get_srd_buffer_size(std::map<std::string, std::vector<uint8_t *>> &srd_path2hashs_m)
+size_t id_get_srd_buffer_size(std::vector<uint8_t *> &srd_hashs)
 {
-    size_t ret = 0;
-    for (auto it : srd_path2hashs_m)
-    {
-        ret += it.first.size() + 10;
-        ret += it.second.size() * (HASH_LENGTH * 2 + 3);
-    }
-
-    return ret;
+    return srd_hashs.size() * (HASH_LENGTH * 2 + 3) + 10;
 }
 
 /**
