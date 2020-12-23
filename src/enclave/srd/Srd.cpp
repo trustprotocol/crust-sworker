@@ -208,7 +208,7 @@ void srd_increase(const char *path)
  * @param clear_metadata -> Clear metadata
  * @return: Decreased size
  */
-size_t srd_decrease(long change, bool clear_metadata)
+size_t srd_decrease(size_t change, bool clear_metadata)
 {
     crust_status_t crust_status = CRUST_SUCCESS;
     Workload *wl = Workload::get_instance();
@@ -225,7 +225,7 @@ size_t srd_decrease(long change, bool clear_metadata)
     }
     
     // Get real change
-    change = std::min(change, (long)wl->srd_hashs.size());
+    change = std::min(change, wl->srd_hashs.size());
     if (change == 0)
     {
         return 0;

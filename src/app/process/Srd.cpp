@@ -34,7 +34,7 @@ json::JSON get_increase_srd_info(size_t &true_srd_capacity)
         {
             disk_info_json["available"] = disk_info_json["available"].ToInt() - srd_reserved_space;
         }
-        true_srd_capacity = std::min((size_t)disk_info_jso["available"].ToInt(), true_srd_capacity);
+        true_srd_capacity = std::min((size_t)disk_info_json["available"].ToInt(), true_srd_capacity);
         disk_info_json["increased"] = true_srd_capacity;
     }
     else
@@ -126,7 +126,9 @@ void srd_change(long change)
     }
     else if (change < 0)
     {
-        Ecall_srd_decrease(global_eid, -change);
+        size_t true_decrease = 0;
+        Ecall_srd_decrease(global_eid, &true_decrease, (size_t)-change);
+        p_log->info("Decrease %luG srd successfully.\n", true_decrease);
     }
 }
 

@@ -323,7 +323,7 @@ sgx_status_t Ecall_srd_increase(sgx_enclave_id_t eid, const char* path)
  * @param path -> the directory path
  * @param change -> reduction
  */
-sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t change)
+sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t *size, size_t change)
 {
     sgx_status_t ret = SGX_SUCCESS;
     if (SGX_SUCCESS != (ret = try_get_enclave(__FUNCTION__)))
@@ -331,7 +331,7 @@ sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t change)
         return ret;
     }
 
-    ret = ecall_srd_decrease(eid, change);
+    ret = ecall_srd_decrease(eid, size, change);
 
     free_enclave(__FUNCTION__);
 

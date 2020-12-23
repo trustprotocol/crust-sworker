@@ -25,7 +25,7 @@ void ecall_srd_increase(const char* path)
  * @param change -> reduction
  * @return: Deleted srd space
  */
-size_t ecall_srd_decrease(long change)
+size_t ecall_srd_decrease(size_t change)
 {
     if (ENC_UPGRADE_STATUS_NONE != Workload::get_instance()->get_upgrade_status())
     {
