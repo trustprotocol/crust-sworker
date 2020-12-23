@@ -14,7 +14,7 @@ enclave {
         // Srd ecalls for srd files
         public void ecall_srd_increase([in, string] const char* path);
         public size_t ecall_srd_decrease(long change);  
-        public void ecall_srd_update_metadata([in, size=hashs_len] const char *hashs, size_t hashs_len);
+        public void ecall_srd_remove_space(size_t change);
         public crust_status_t ecall_change_srd_task(long change, [out] long *real_change);
 
         public void ecall_main_loop();

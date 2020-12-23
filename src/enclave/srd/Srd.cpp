@@ -205,9 +205,10 @@ void srd_increase(const char *path)
 /**
  * @description: Decrease srd files under directory
  * @param change -> Total to be deleted space volumn
+ * @param clear_metadata -> Clear metadata
  * @return: Decreased size
  */
-size_t srd_decrease(long change)
+size_t srd_decrease(long change, bool clear_metadata)
 {
     crust_status_t crust_status = CRUST_SUCCESS;
     Workload *wl = Workload::get_instance();
@@ -217,7 +218,11 @@ size_t srd_decrease(long change)
     // Choose to be deleted g_hash index
     SafeLock sl(wl->srd_mutex);
     sl.lock();
-    wl->deal_deleted_srd(false);
+
+    if (clear_metadata)
+    {
+        wl->deal_deleted_srd(false);
+    }
     
     // Get real change
     change = std::min(change, (long)wl->srd_hashs.size());
@@ -248,7 +253,10 @@ size_t srd_decrease(long change)
     }
 
     // Delete metadata
-    wl->deal_deleted_srd(false);
+    if (clear_metadata)
+    {
+        wl->deal_deleted_srd(false);
+    }
     sl.unlock();
 
     // Delete srd files
@@ -272,64 +280,9 @@ size_t srd_decrease(long change)
  * @param hashs -> Pointer to the address of to be deleted hashs array
  * @param hashs_len -> Hashs array length
  */
-void srd_update_metadata(const char *hashs, size_t hashs_len)
+void srd_remove_space(size_t change)
 {
-    crust_status_t crust_status = CRUST_SUCCESS;
-    Workload *wl = Workload::get_instance();
-    json::JSON del_hashs_json = json::JSON::Load(std::string(hashs, hashs_len));
-    std::unordered_map<std::string, std::vector<std::string>> del_dir2hashs_um;
-
-    sgx_thread_mutex_lock(&wl->srd_mutex);
-    for (auto it = del_hashs_json.ObjectRange().begin(); it != del_hashs_json.ObjectRange().end(); it++)
-    {
-        std::string del_dir = it->first;
-        size_t del_num = it->second.ToInt();
-        std::vector<uint8_t*> *p_hashs = &wl->srd_path2hashs_m[del_dir];
-        if (p_hashs->size() > 0)
-        {
-            if (p_hashs->size() < del_num)
-            {
-                del_num = p_hashs->size();
-            }
-            auto rit = p_hashs->rbegin();
-            size_t reverse_index = p_hashs->size() - 1;
-            std::vector<uint32_t> del_index_v;
-            while (rit != p_hashs->rend() && del_num > 0)
-            {
-                del_dir2hashs_um[del_dir].push_back(hexstring_safe(*rit, HASH_LENGTH));
-                del_index_v.push_back(reverse_index);
-                rit++;
-                del_num--;
-                reverse_index--;
-            }
-            wl->add_srd_to_deleted_buffer(del_dir, del_index_v.begin(), del_index_v.end());
-        }
-    }
-    sgx_thread_mutex_unlock(&wl->srd_mutex);
-
-    // Delete srd file
-    for (auto dir2hashs : del_dir2hashs_um)
-    {
-        std::string del_dir = dir2hashs.first;
-        log_debug("Disk path:%s will free %ldG srd space for user data. This is normal.\n", del_dir.c_str(), dir2hashs.second.size());
-        for (auto g_hash : dir2hashs.second)
-        {
-            std::string del_path = del_dir + "/" + g_hash;
-            ocall_delete_folder_or_file(&crust_status, del_path.c_str());
-            if (CRUST_SUCCESS != crust_status)
-            {
-                log_warn("Delete path:%s failed! Error code:%lx\n", del_path.c_str(), crust_status);
-            }
-        }
-    }
-
-    // Update srd info
-    std::string srd_info_str = wl->get_srd_info().dump();
-    crust_status = persist_set_unsafe(DB_SRD_INFO, reinterpret_cast<const uint8_t *>(srd_info_str.c_str()), srd_info_str.size());
-    if (CRUST_SUCCESS != crust_status)
-    {
-        log_warn("Update srd info failed! Error code:%lx\n", crust_status);
-    }
+    log_debug("Disk path:%s will free %ldG srd space for meaningful data. This is normal.\n", srd_decrease(change, false));
 }
 
 /**

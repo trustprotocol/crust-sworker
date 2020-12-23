@@ -18,7 +18,7 @@ std::unordered_map<std::string, int> g_task_priority_um = {
     {"Ecall_seal_file", 1},
     {"Ecall_unseal_file", 1},
     {"Ecall_srd_decrease", 1},
-    {"Ecall_srd_update_metadata", 1},
+    {"Ecall_srd_remove_space", 1},
     {"Ecall_change_srd_task", 1},
     {"Ecall_srd_increase", 2},
     {"Ecall_id_get_info", 3},
@@ -323,7 +323,7 @@ sgx_status_t Ecall_srd_increase(sgx_enclave_id_t eid, const char* path)
  * @param path -> the directory path
  * @param change -> reduction
  */
-sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t *size, size_t change)
+sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t change)
 {
     sgx_status_t ret = SGX_SUCCESS;
     if (SGX_SUCCESS != (ret = try_get_enclave(__FUNCTION__)))
@@ -331,7 +331,7 @@ sgx_status_t Ecall_srd_decrease(sgx_enclave_id_t eid, size_t *size, size_t chang
         return ret;
     }
 
-    ret = ecall_srd_decrease(eid, size, change);
+    ret = ecall_srd_decrease(eid, change);
 
     free_enclave(__FUNCTION__);
 
@@ -564,7 +564,7 @@ sgx_status_t Ecall_change_srd_task(sgx_enclave_id_t eid, crust_status_t *status,
  * @param hashs -> Pointer to the address of to be deleted hashs array
  * @param hashs_len -> Hashs array length
  */
-sgx_status_t Ecall_srd_update_metadata(sgx_enclave_id_t eid, const char *hashs, size_t hashs_len)
+sgx_status_t Ecall_srd_remove_space(sgx_enclave_id_t eid, size_t change)
 {
     sgx_status_t ret = SGX_SUCCESS;
     if (SGX_SUCCESS != (ret = try_get_enclave(__FUNCTION__)))
@@ -572,7 +572,7 @@ sgx_status_t Ecall_srd_update_metadata(sgx_enclave_id_t eid, const char *hashs, 
         return ret;
     }
 
-    ret = ecall_srd_update_metadata(eid, hashs, hashs_len);
+    ret = ecall_srd_remove_space(eid, change);
 
     free_enclave(__FUNCTION__);
 

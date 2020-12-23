@@ -32,7 +32,7 @@ size_t ecall_srd_decrease(long change)
         return 0;
     }
 
-    size_t ret = srd_decrease(change);
+    size_t ret = srd_decrease(change, true);
 
     return ret;
 }
@@ -51,14 +51,14 @@ crust_status_t ecall_change_srd_task(long change, long *real_change)
  * @param hashs (in) -> Pointer to the address of to be deleted hashs array
  * @param hashs_len -> Hashs array length
  */
-void ecall_srd_update_metadata(const char *hashs, size_t hashs_len)
+void ecall_srd_remove_space(size_t change)
 {
     if (ENC_UPGRADE_STATUS_NONE != Workload::get_instance()->get_upgrade_status())
     {
         return;
     }
 
-    srd_update_metadata(hashs, hashs_len);
+    srd_remove_space(change);
 }
 
 /**

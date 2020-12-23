@@ -17,7 +17,7 @@
 void srd_change();
 void srd_increase(const char *path);
 size_t srd_decrease(long change);
-void srd_update_metadata(const char *hashs, size_t hashs_len);
+void srd_remove_space(size_t change);
 long get_srd_task();
 crust_status_t change_srd_task(long change, long *real_change);
 
