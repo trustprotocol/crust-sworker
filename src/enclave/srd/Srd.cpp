@@ -213,7 +213,6 @@ size_t srd_decrease(size_t change, bool clear_metadata)
     crust_status_t crust_status = CRUST_SUCCESS;
     Workload *wl = Workload::get_instance();
     uint32_t real_change = 0;
-    uint32_t srd_total_num = 0;
 
     // Choose to be deleted g_hash index
     SafeLock sl(wl->srd_mutex);
@@ -276,9 +275,8 @@ size_t srd_decrease(size_t change, bool clear_metadata)
 }
 
 /**
- * @description: Update srd_path2hashs_m
- * @param hashs -> Pointer to the address of to be deleted hashs array
- * @param hashs_len -> Hashs array length
+ * @description: Remove space outside main loop
+ * @param change -> remove size
  */
 void srd_remove_space(size_t change)
 {
@@ -310,12 +308,9 @@ crust_status_t change_srd_task(long change, long *real_change)
     {
         Workload *wl = Workload::get_instance();
         sgx_thread_mutex_lock(&wl->srd_mutex);
-        size_t srd_num = 0;
-        for (auto srds : Workload::get_instance()->srd_path2hashs_m)
-        {
-            srd_num += srds.second.size();
-        }
+        size_t srd_num = wl->srd_hashs.size();
         sgx_thread_mutex_unlock(&wl->srd_mutex);
+        
         if (srd_num >= SRD_NUMBER_UPPER_LIMIT)
         {
             log_warn("No srd will be added!Srd size has reached the upper limit:%ldG!\n", SRD_NUMBER_UPPER_LIMIT);

@@ -11,7 +11,7 @@
 // For enclave metadata
 #define ID_METADATA "metadata"
 #define ID_FILE "files"
-#define ID_WORKLOAD "workload"
+#define ID_SRD "srd"
 #define ID_KEY_PAIR "id_key_pair"
 #define ID_PRE_PUB_KEY "pre_pub_key"
 #define ID_REPORT_HEIGHT "report_height"
