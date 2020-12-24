@@ -230,7 +230,7 @@ size_t srd_decrease(size_t change)
     for (size_t i = 0; i < change; i++)
     {
         srd_del_hashs.push_back(wl->srd_hashs[wl->srd_hashs.size() - 1 - i]);
-        wl->add_srd_to_deleted_buffer(wl->add_srd_to_deleted_buffer(wl->srd_hashs.size() - 1 - i));
+        wl->add_srd_to_deleted_buffer(wl->srd_hashs.size() - 1 - i);
     }
     sl.unlock();
 

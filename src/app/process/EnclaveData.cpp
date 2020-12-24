@@ -320,7 +320,6 @@ std::string EnclaveData::gen_workload()
     }
     wl_json["srd"]["disk_reserved"] = get_reserved_space();
     size_t tmp_size = 0;
-    size_t srd_space = 0;
     json::JSON disk_json = get_increase_srd_info(tmp_size);
     wl_json["srd"]["available"] = disk_json["available"].ToInt();
     wl_json["srd"]["total"] = disk_json["total"].ToInt();
