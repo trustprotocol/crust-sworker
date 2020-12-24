@@ -32,7 +32,7 @@ size_t ecall_srd_decrease(size_t change)
         return 0;
     }
 
-    size_t ret = srd_decrease(change, true);
+    size_t ret = srd_decrease(change);
 
     return ret;
 }

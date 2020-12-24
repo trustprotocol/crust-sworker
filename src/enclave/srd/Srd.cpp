@@ -208,21 +208,16 @@ void srd_increase(const char *path)
  * @param clear_metadata -> Clear metadata
  * @return: Decreased size
  */
-size_t srd_decrease(size_t change, bool clear_metadata)
+size_t srd_decrease(size_t change)
 {
     crust_status_t crust_status = CRUST_SUCCESS;
     Workload *wl = Workload::get_instance();
-    uint32_t real_change = 0;
 
     // Choose to be deleted g_hash index
     SafeLock sl(wl->srd_mutex);
     sl.lock();
+    wl->deal_deleted_srd(false);
 
-    if (clear_metadata)
-    {
-        wl->deal_deleted_srd(false);
-    }
-    
     // Get real change
     change = std::min(change, wl->srd_hashs.size());
     if (change == 0)
@@ -232,29 +227,10 @@ size_t srd_decrease(size_t change, bool clear_metadata)
 
     // Get change set
     std::vector<uint8_t *> srd_del_hashs;
-    for (size_t i = wl->srd_hashs.size() - 1; i >= 0; i--)
+    for (size_t i = 0; i < change; i++)
     {
-        wl->add_srd_to_deleted_buffer(i);
-        uint8_t *tmp = (uint8_t *)enc_malloc(HASH_LENGTH);
-        if (tmp == NULL)
-        {
-            log_info("Malloc memory failed!\n");
-            for (size_t j = 0; j < srd_del_hashs.size(); j++)
-            {
-                free(srd_del_hashs[j]);
-            }
-            srd_del_hashs.clear();
-            return 0;
-        }
-        memset(tmp, 0, HASH_LENGTH);
-        memcpy(tmp, wl->srd_hashs[i], HASH_LENGTH);
-        srd_del_hashs.push_back(tmp);
-    }
-
-    // Delete metadata
-    if (clear_metadata)
-    {
-        wl->deal_deleted_srd(false);
+        srd_del_hashs.push_back(wl->srd_hashs[wl->srd_hashs.size() - 1 - i]);
+        wl->add_srd_to_deleted_buffer(wl->add_srd_to_deleted_buffer(wl->srd_hashs.size() - 1 - i));
     }
     sl.unlock();
 
@@ -263,7 +239,7 @@ size_t srd_decrease(size_t change, bool clear_metadata)
     {
         // --- Delete srd file --- //
         // TODO : hard code
-        std::string del_path = "/opt/crust/crust-sworker/0.7.0/sworker_base_path/data/srd" + hexstring_safe(del_hash, HASH_LENGTH);
+        std::string del_path = std::string("/opt/crust/crust-sworker/0.7.0/sworker_base_path/data/srd").append("/").append(hexstring_safe(del_hash, HASH_LENGTH));
         ocall_delete_folder_or_file(&crust_status, del_path.c_str());
         if (CRUST_SUCCESS != crust_status)
         {
@@ -271,7 +247,9 @@ size_t srd_decrease(size_t change, bool clear_metadata)
         }
     }
 
-    return real_change;
+    // Free delete srd
+    wl->deal_deleted_srd();
+    return change;
 }
 
 /**
@@ -280,7 +258,8 @@ size_t srd_decrease(size_t change, bool clear_metadata)
  */
 void srd_remove_space(size_t change)
 {
-    log_debug("Disk path:%s will free %ldG srd space for meaningful data. This is normal.\n", srd_decrease(change, false));
+    // TODO : hard code
+    log_debug("Data path will free %ldG srd space for meaningful data. This is normal.\n", change);
 }
 
 /**
@@ -310,7 +289,7 @@ crust_status_t change_srd_task(long change, long *real_change)
         sgx_thread_mutex_lock(&wl->srd_mutex);
         size_t srd_num = wl->srd_hashs.size();
         sgx_thread_mutex_unlock(&wl->srd_mutex);
-        
+
         if (srd_num >= SRD_NUMBER_UPPER_LIMIT)
         {
             log_warn("No srd will be added!Srd size has reached the upper limit:%ldG!\n", SRD_NUMBER_UPPER_LIMIT);
