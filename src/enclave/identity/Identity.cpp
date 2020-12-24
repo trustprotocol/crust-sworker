@@ -781,7 +781,7 @@ crust_status_t id_store_metadata()
     // Get srd data copy
     sgx_thread_mutex_lock(&wl->srd_mutex);
     std::vector<uint8_t *> srd_hashs;
-    srd_hashs.insert(wl->srd_hashs.begin(), wl->srd_hashs.end());
+    srd_hashs.insert(srd_hashs.end(), wl->srd_hashs.begin(), wl->srd_hashs.end());
     sgx_thread_mutex_unlock(&wl->srd_mutex);
 
     // Get file data copy
@@ -789,6 +789,8 @@ crust_status_t id_store_metadata()
     std::vector<json::JSON> sealed_files;
     sealed_files.insert(sealed_files.end(), wl->sealed_files.begin(), wl->sealed_files.end());
     sgx_thread_mutex_unlock(&wl->file_mutex);
+    
+    // Get meta buffer
     size_t meta_len = id_get_srd_buffer_size(srd_hashs)
                     + id_get_file_buffer_size(sealed_files)
                     + id_get_metadata_title_size();

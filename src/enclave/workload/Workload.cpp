@@ -85,7 +85,6 @@ void Workload::clean_srd_buffer()
     }
     this->srd_hashs.clear();
 }
-}
 
 /**
  * @description: Generate workload info

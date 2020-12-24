@@ -30,7 +30,7 @@ void validate_srd()
         uint32_t rand_idx = 0;
         sgx_read_rand((uint8_t *)&rand_val, 4);
         rand_idx = rand_val % wl->srd_hashs.size();
-        validate_srd_idx_um.insert(std::make_pair(rand_idx, wl->srd_hashs[rand_idx]));
+        validate_srd_idx_s.insert(std::make_pair(rand_idx, wl->srd_hashs[rand_idx]));
     }
     sgx_thread_mutex_unlock(&wl->srd_mutex);
 
