@@ -942,7 +942,7 @@ crust_status_t id_restore_metadata()
     }
     // Restore srd
     if (meta_json.hasKey(ID_SRD)
-            && meta_json[ID_SRD].JSONType() == json::JSON::Class::Object)
+            && meta_json[ID_SRD].JSONType() == json::JSON::Class::Array)
     {
         crust_status = wl->restore_srd(meta_json[ID_SRD]);
         if (CRUST_SUCCESS != crust_status)

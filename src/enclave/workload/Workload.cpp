@@ -61,7 +61,7 @@ std::string Workload::get_workload(void)
     wl_json[WL_FILES] = this->wl_spec_info;
     sgx_thread_mutex_unlock(&wl_spec_info_mutex);
     // Srd info
-    wl_json[WL_SRD][WL_SRD_DETAIL] = this->get_srd_info();
+    wl_json[WL_SRD][WL_SRD_ASSIGNED] = this->get_srd_info()[WL_SRD_ASSIGNED].ToInt();
     wl_json[WL_SRD][WL_SRD_REMAINING_TASK] = get_srd_task();
 
     std::string wl_str = wl_json.dump();
@@ -699,7 +699,7 @@ void Workload::deal_deleted_srd(bool locked)
 
     // Delete hashs
     long del_num = 0;
-    for (auto idx = tmp_del_idx_s->rbegin(); idx != tmp_del_idx_s->rend(); idx++)
+    for (auto idx = tmp_del_idx_s.rbegin(); idx != tmp_del_idx_s.rend(); idx++)
     {
         if (*idx < this->srd_hashs.size())
         {
