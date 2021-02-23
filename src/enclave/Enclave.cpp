@@ -261,6 +261,22 @@ crust_status_t ecall_delete_file(const char *cid)
     return ret;
 }
 
+/**
+ * @description: Validate meaningful files
+ */
+void ecall_validate_file()
+{
+    validate_meaningful_file_real();
+}
+
+/**
+ * @description: Validate srd
+ */
+void ecall_validate_srd()
+{
+    validate_srd_real();
+}
+
 /************************************Upgrade****************************************/
 
 /**
