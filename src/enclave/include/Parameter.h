@@ -132,7 +132,8 @@ typedef void (*ocall_store2_f)(const uint8_t *u, size_t s);
 #define LAYER_LENGTH 2
 #define ENC_MAX_THREAD_NUM  30
 #define ENCLAVE_MALLOC_TRYOUT 3
-const int SRD_LENGTH = UUID_LENGTH + LAYER_LENGTH + HASH_LENGTH;
+//const int SRD_LENGTH = UUID_LENGTH + LAYER_LENGTH + HASH_LENGTH;
+const int SRD_LENGTH = UUID_LENGTH + HASH_LENGTH;
 const int FILE_ITEM_LENGTH = UUID_LENGTH + HASH_LENGTH;
 
 // For upgrade

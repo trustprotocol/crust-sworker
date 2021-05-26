@@ -501,17 +501,13 @@ std::string get_real_path_by_type(const char *path, store_type_t type)
             {
                 r_path = d_path
                        + DISK_SRD_DIR
-                       + "/" + std::string(path + UUID_LENGTH * 2, 2)
-                       + "/" + std::string(path + UUID_LENGTH * 2 + 2, 2)
-                       + "/" + std::string(path + UUID_LENGTH * 2 + 4);
+                       + "/" + std::string(path + UUID_LENGTH * 2);
                 break;
             }
         case STORE_TYPE_FILE:
             {
                 r_path = d_path
                        + DISK_FILE_DIR
-                       + "/" + std::string(path + UUID_LENGTH * 2 + 2, 2)
-                       + "/" + std::string(path + UUID_LENGTH * 2 + 4, 2)
                        + "/" + std::string(path + UUID_LENGTH * 2);
                 break;
             }
